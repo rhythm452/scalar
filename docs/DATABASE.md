@@ -22,7 +22,7 @@ This document is the authoritative schema for the SQLite database. Phase 1 imple
 ## 1. Conventions
 
 1. All primary keys are TEXT UUIDs except `hosted_zones.id` (`Z` + 13 uppercase alphanumerics) and `change_batches.id` (`C` + 13 uppercase alphanumerics), both generated with `secrets` over `[A-Z0-9]`.
-2. Timestamps are TEXT ISO-8601 UTC (`YYYY-MM-DDTHH:MM:SSZ`), set by the service layer, never database defaults, so tests can freeze time.
+2. Timestamps are TEXT ISO-8601 UTC (`YYYY-MM-DDTHH:MM:SSZ`), set by the service layer on every write, so tests can freeze time. A `strftime` server default exists on each column purely as a backstop for raw SQL; the service never relies on it.
 3. Booleans are INTEGER 0/1 with CHECK constraints.
 4. Every foreign key declares ON DELETE behaviour explicitly; SQLite enforces with `PRAGMA foreign_keys=ON` on every connection and WAL journal mode.
 5. Surrogate record IDs are internal only; the natural key `(hosted_zone_id, name, type, set_identifier)` carries the UNIQUE constraint (see ADR-007).
@@ -65,7 +65,7 @@ Purpose: DNS zone container; mirrors Route 53 hosted zone semantics.
 
 | Column | Type | Null | Default | Constraints | Description |
 |--------|------|------|---------|-------------|-------------|
-| id | TEXT | NOT NULL | `Z`+13 alphanumerics | PK, CHECK `id GLOB 'Z[A-Z0-9][A-Z0-9]*'` | AWS-format zone id |
+| id | TEXT | NOT NULL | `Z`+13 alphanumerics | PK, CHECK `id GLOB 'Z[A-Z0-9]*'` | AWS-format zone id |
 | name | TEXT | NOT NULL | — | — | Normalized lowercase FQDN with trailing dot |
 | comment | TEXT | NULL | NULL | CHECK length ≤ 256 | Maps to Route 53 Description field |
 | type | TEXT | NOT NULL | — | CHECK IN (`public`,`private`) | Public or private zone |
@@ -107,7 +107,7 @@ Purpose: one DNS record set (name + type + optional set-identifier) with routing
 | created_at | TEXT | NOT NULL | now | — | Creation time |
 | updated_at | TEXT | NOT NULL | now | — | Last update |
 
-PK: `id`. FK: `hosted_zone_id → hosted_zones.id ON DELETE CASCADE`. Unique: `(hosted_zone_id, name, type, set_identifier)` with NULL-safe handling (NULL set_identifier treated as empty string in service check plus partial unique index pair). Index: `(hosted_zone_id, name, type)` serving record list search/filter/sort.
+PK: `id`. FK: `hosted_zone_id → hosted_zones.id ON DELETE CASCADE`. Unique: `(hosted_zone_id, name, type, set_identifier)` with NULL-safe handling: SQLite treats NULL set_identifiers as distinct, so a partial unique index on `(hosted_zone_id, name, type) WHERE set_identifier IS NULL` enforces uniqueness for simple records, alongside the named natural-key UNIQUE constraint for records carrying a set identifier (ADR-007). Index: `(hosted_zone_id, name, type)` serving record list search/filter/sort.
 
 ## 6. resource_record_values
 
@@ -207,106 +207,170 @@ The idempotent seed script (`backend/app/seed/seed.py`) runs on backend boot whe
 
 ## 14. Complete DDL
 
+Verbatim DDL produced by the initial Alembic revision (`backend/alembic/versions/0001_initial_schema.py`); the test suite asserts `alembic upgrade head` output is byte-identical to `Base.metadata.create_all`:
+
 ```sql
 PRAGMA journal_mode=WAL;
 PRAGMA foreign_keys=ON;
 
 CREATE TABLE users (
-  id TEXT PRIMARY KEY,
-  username TEXT NOT NULL UNIQUE,
-  email TEXT NOT NULL UNIQUE,
-  password_hash TEXT NOT NULL,
-  aws_account_id TEXT NOT NULL CHECK (length(aws_account_id) = 12),
-  display_name TEXT,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
+  username VARCHAR(64) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  aws_account_id VARCHAR(16) NOT NULL,
+  display_name VARCHAR(255),
+  id VARCHAR(32) NOT NULL,
+  created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')) NOT NULL,
+  updated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')) NOT NULL,
+  CONSTRAINT pk_users PRIMARY KEY (id),
+  CONSTRAINT ck_users_aws_account_id_format
+    CHECK (length(aws_account_id) = 12 AND aws_account_id NOT GLOB '*[^0-9]*'),
+  CONSTRAINT uq_users_username UNIQUE (username),
+  CONSTRAINT uq_users_email UNIQUE (email)
 );
 
 CREATE TABLE sessions (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  token TEXT NOT NULL UNIQUE,
+  user_id VARCHAR(32) NOT NULL,
+  token VARCHAR(64) NOT NULL,
   expires_at TEXT NOT NULL,
   created_at TEXT NOT NULL,
-  last_seen_at TEXT NOT NULL
+  last_seen_at TEXT NOT NULL,
+  id VARCHAR(32) NOT NULL,
+  CONSTRAINT pk_sessions PRIMARY KEY (id),
+  CONSTRAINT fk_sessions_user_id_users
+    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 );
-CREATE INDEX ix_sessions_token ON sessions(token);
+CREATE UNIQUE INDEX ix_sessions_token ON sessions (token);
 
 CREATE TABLE hosted_zones (
-  id TEXT PRIMARY KEY CHECK (id GLOB 'Z*'),
+  id VARCHAR(32) NOT NULL,
   name TEXT NOT NULL,
-  comment TEXT CHECK (comment IS NULL OR length(comment) <= 256),
-  type TEXT NOT NULL CHECK (type IN ('public','private')),
-  vpc_id TEXT,
-  vpc_region TEXT,
-  caller_reference TEXT NOT NULL UNIQUE,
-  record_set_count INTEGER NOT NULL DEFAULT 0 CHECK (record_set_count >= 0),
-  owner_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL,
-  UNIQUE (owner_user_id, name, type)
+  comment TEXT,
+  type VARCHAR(16) NOT NULL,
+  vpc_id VARCHAR(32),
+  vpc_region VARCHAR(32),
+  caller_reference VARCHAR(64) NOT NULL,
+  record_set_count INTEGER DEFAULT 0 NOT NULL,
+  owner_user_id VARCHAR(32) NOT NULL,
+  created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')) NOT NULL,
+  updated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')) NOT NULL,
+  CONSTRAINT pk_hosted_zones PRIMARY KEY (id),
+  CONSTRAINT ck_hosted_zones_id_format CHECK (id GLOB 'Z[A-Z0-9]*'),
+  CONSTRAINT ck_hosted_zones_comment_length
+    CHECK (comment IS NULL OR length(comment) <= 256),
+  CONSTRAINT ck_hosted_zones_type_values CHECK (type IN ('public','private')),
+  CONSTRAINT ck_hosted_zones_record_set_count_non_negative
+    CHECK (record_set_count >= 0),
+  CONSTRAINT uq_hosted_zones_caller_reference UNIQUE (caller_reference),
+  CONSTRAINT uq_hosted_zones_owner_name_type UNIQUE (owner_user_id, name, type),
+  CONSTRAINT fk_hosted_zones_owner_user_id_users
+    FOREIGN KEY (owner_user_id) REFERENCES users (id) ON DELETE CASCADE
 );
-CREATE INDEX ix_zones_owner_name ON hosted_zones(owner_user_id, name);
+CREATE INDEX ix_zones_owner_name ON hosted_zones (owner_user_id, name);
 
 CREATE TABLE resource_record_sets (
-  id TEXT PRIMARY KEY,
-  hosted_zone_id TEXT NOT NULL REFERENCES hosted_zones(id) ON DELETE CASCADE,
+  hosted_zone_id VARCHAR(32) NOT NULL,
   name TEXT NOT NULL,
-  type TEXT NOT NULL CHECK (type IN ('A','AAAA','CNAME','TXT','MX','NS','PTR','SRV','CAA','SOA','NAPTR','SPF','DS')),
-  ttl INTEGER CHECK (ttl IS NULL OR (ttl >= 1 AND ttl <= 2147483647)),
-  routing_policy TEXT NOT NULL DEFAULT 'simple'
-    CHECK (routing_policy IN ('simple','weighted','latency','failover','geolocation','multivalue')),
-  set_identifier TEXT,
-  weight INTEGER CHECK (weight IS NULL OR (weight >= 0 AND weight <= 255)),
-  region TEXT,
-  failover TEXT CHECK (failover IS NULL OR failover IN ('PRIMARY','SECONDARY')),
-  geo_continent TEXT,
-  geo_country TEXT,
-  geo_subdivision TEXT,
-  is_alias INTEGER NOT NULL DEFAULT 0 CHECK (is_alias IN (0,1)),
+  type VARCHAR(16) NOT NULL,
+  ttl INTEGER,
+  routing_policy VARCHAR(32) DEFAULT 'simple' NOT NULL,
+  set_identifier VARCHAR(128),
+  weight INTEGER,
+  region VARCHAR(32),
+  failover VARCHAR(16),
+  geo_continent VARCHAR(8),
+  geo_country VARCHAR(8),
+  geo_subdivision VARCHAR(16),
+  is_alias INTEGER DEFAULT 0 NOT NULL,
   alias_target TEXT,
-  alias_hosted_zone_id TEXT,
-  alias_evaluate_target_health INTEGER CHECK (alias_evaluate_target_health IS NULL OR alias_evaluate_target_health IN (0,1)),
-  health_check_id TEXT,
-  is_system INTEGER NOT NULL DEFAULT 0 CHECK (is_system IN (0,1)),
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL,
-  UNIQUE (hosted_zone_id, name, type, set_identifier)
+  alias_hosted_zone_id VARCHAR(32),
+  alias_evaluate_target_health INTEGER,
+  health_check_id VARCHAR(64),
+  is_system INTEGER DEFAULT 0 NOT NULL,
+  id VARCHAR(32) NOT NULL,
+  created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')) NOT NULL,
+  updated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')) NOT NULL,
+  CONSTRAINT pk_resource_record_sets PRIMARY KEY (id),
+  CONSTRAINT ck_resource_record_sets_type_values
+    CHECK (type IN ('A','AAAA','CNAME','TXT','MX','NS','PTR','SRV','CAA','SOA',
+                    'NAPTR','SPF','DS')),
+  CONSTRAINT ck_resource_record_sets_ttl_range
+    CHECK (ttl IS NULL OR (ttl >= 1 AND ttl <= 2147483647)),
+  CONSTRAINT ck_resource_record_sets_routing_policy_values
+    CHECK (routing_policy IN ('simple','weighted','latency','failover',
+                              'geolocation','multivalue')),
+  CONSTRAINT ck_resource_record_sets_weight_range
+    CHECK (weight IS NULL OR (weight >= 0 AND weight <= 255)),
+  CONSTRAINT ck_resource_record_sets_failover_values
+    CHECK (failover IS NULL OR failover IN ('PRIMARY','SECONDARY')),
+  CONSTRAINT ck_resource_record_sets_is_alias_values CHECK (is_alias IN (0,1)),
+  CONSTRAINT ck_resource_record_sets_alias_evaluate_target_health_values
+    CHECK (alias_evaluate_target_health IS NULL OR alias_evaluate_target_health IN (0,1)),
+  CONSTRAINT ck_resource_record_sets_is_system_values CHECK (is_system IN (0,1)),
+  CONSTRAINT uq_resource_record_sets_natural_key
+    UNIQUE (hosted_zone_id, name, type, set_identifier),
+  CONSTRAINT fk_resource_record_sets_hosted_zone_id_hosted_zones
+    FOREIGN KEY (hosted_zone_id) REFERENCES hosted_zones (id) ON DELETE CASCADE
 );
 CREATE INDEX ix_records_zone_name_type
-  ON resource_record_sets(hosted_zone_id, name, type);
+  ON resource_record_sets (hosted_zone_id, name, type);
+CREATE UNIQUE INDEX uq_records_zone_name_type_sid_null
+  ON resource_record_sets (hosted_zone_id, name, type) WHERE set_identifier IS NULL;
 
 CREATE TABLE resource_record_values (
-  id TEXT PRIMARY KEY,
-  record_set_id TEXT NOT NULL REFERENCES resource_record_sets(id) ON DELETE CASCADE,
-  value TEXT NOT NULL CHECK (length(value) >= 1),
-  sort_order INTEGER NOT NULL DEFAULT 0 CHECK (sort_order >= 0)
+  record_set_id VARCHAR(32) NOT NULL,
+  value TEXT NOT NULL,
+  sort_order INTEGER DEFAULT 0 NOT NULL,
+  id VARCHAR(32) NOT NULL,
+  CONSTRAINT pk_resource_record_values PRIMARY KEY (id),
+  CONSTRAINT ck_resource_record_values_value_non_empty CHECK (length(value) >= 1),
+  CONSTRAINT ck_resource_record_values_sort_order_non_negative
+    CHECK (sort_order >= 0),
+  CONSTRAINT fk_resource_record_values_record_set_id_resource_record_sets
+    FOREIGN KEY (record_set_id) REFERENCES resource_record_sets (id) ON DELETE CASCADE
 );
-CREATE INDEX ix_values_record ON resource_record_values(record_set_id);
+CREATE INDEX ix_values_record ON resource_record_values (record_set_id);
 
 CREATE TABLE tags (
-  id TEXT PRIMARY KEY,
-  resource_type TEXT NOT NULL CHECK (resource_type IN ('hostedzone','healthcheck')),
-  resource_id TEXT NOT NULL,
-  key TEXT NOT NULL CHECK (length(key) BETWEEN 1 AND 128),
-  value TEXT NOT NULL CHECK (length(value) <= 256),
-  UNIQUE (resource_type, resource_id, key)
+  resource_type VARCHAR(32) NOT NULL,
+  resource_id VARCHAR(32) NOT NULL,
+  "key" VARCHAR(128) NOT NULL,
+  value TEXT NOT NULL,
+  id VARCHAR(32) NOT NULL,
+  CONSTRAINT pk_tags PRIMARY KEY (id),
+  CONSTRAINT ck_tags_resource_type_values
+    CHECK (resource_type IN ('hostedzone','healthcheck')),
+  CONSTRAINT ck_tags_key_length CHECK (length("key") BETWEEN 1 AND 128),
+  CONSTRAINT ck_tags_value_length CHECK (length(value) <= 256),
+  CONSTRAINT uq_tags_resource_key UNIQUE (resource_type, resource_id, "key")
 );
-CREATE INDEX ix_tags_resource ON tags(resource_type, resource_id);
+CREATE INDEX ix_tags_resource ON tags (resource_type, resource_id);
 
 CREATE TABLE change_batches (
-  id TEXT PRIMARY KEY CHECK (id GLOB 'C*'),
-  hosted_zone_id TEXT NOT NULL REFERENCES hosted_zones(id) ON DELETE CASCADE,
-  status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','INSYNC')),
-  submitted_at TEXT NOT NULL,
-  comment TEXT
+  id VARCHAR(32) NOT NULL,
+  hosted_zone_id VARCHAR(32) NOT NULL,
+  status VARCHAR(16) DEFAULT 'PENDING' NOT NULL,
+  submitted_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')) NOT NULL,
+  comment TEXT,
+  CONSTRAINT pk_change_batches PRIMARY KEY (id),
+  CONSTRAINT ck_change_batches_id_format CHECK (id GLOB 'C[A-Z0-9]*'),
+  CONSTRAINT ck_change_batches_status_values
+    CHECK (status IN ('PENDING','INSYNC')),
+  CONSTRAINT fk_change_batches_hosted_zone_id_hosted_zones
+    FOREIGN KEY (hosted_zone_id) REFERENCES hosted_zones (id) ON DELETE CASCADE
 );
-CREATE INDEX ix_batches_zone_time ON change_batches(hosted_zone_id, submitted_at);
+CREATE INDEX ix_batches_zone_time
+  ON change_batches (hosted_zone_id, submitted_at);
 
 CREATE TABLE change_batch_items (
-  id TEXT PRIMARY KEY,
-  change_batch_id TEXT NOT NULL REFERENCES change_batches(id) ON DELETE CASCADE,
-  action TEXT NOT NULL CHECK (action IN ('CREATE','DELETE','UPSERT')),
-  record_snapshot TEXT
+  change_batch_id VARCHAR(32) NOT NULL,
+  action VARCHAR(16) NOT NULL,
+  record_snapshot TEXT,
+  id VARCHAR(32) NOT NULL,
+  CONSTRAINT pk_change_batch_items PRIMARY KEY (id),
+  CONSTRAINT ck_change_batch_items_action_values
+    CHECK (action IN ('CREATE','DELETE','UPSERT')),
+  CONSTRAINT fk_change_batch_items_change_batch_id_change_batches
+    FOREIGN KEY (change_batch_id) REFERENCES change_batches (id) ON DELETE CASCADE
 );
 ```
