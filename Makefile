@@ -44,7 +44,11 @@ seed:
 	uv run --project backend python -m app.seed.seed --app-dir backend
 
 e2e:
-	pnpm --dir e2e exec playwright test
+	@if find e2e/tests -name '*.spec.ts' | grep -q .; then \
+		pnpm --dir e2e exec playwright test; \
+	else \
+		echo "No Playwright specs yet (e2e/tests is still scaffolding, Phase 8) -- skipping."; \
+	fi
 
 e2e-update:
 	pnpm --dir e2e exec playwright test --update-snapshots

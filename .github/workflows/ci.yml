@@ -57,7 +57,13 @@ jobs:
       - run: uv run --project backend pytest backend/tests -q
         env:
           DATABASE_URL: sqlite:///./test-ci.db
-      - run: pnpm --dir e2e exec playwright test
+      - name: Run Playwright tests (if any exist)
+        run: |
+          if find e2e/tests -name '*.spec.ts' | grep -q .; then
+            pnpm --dir e2e exec playwright test
+          else
+            echo "No Playwright specs yet (e2e/tests is still scaffolding, Phase 8) -- skipping the webServer-backed run rather than timing out waiting on a frontend with no pages."
+          fi
 
   preview:
     runs-on: ubuntu-latest
