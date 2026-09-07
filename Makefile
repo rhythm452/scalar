@@ -1,4 +1,4 @@
-.PHONY: dev dev-backend dev-frontend test test-backend test-frontend lint lint-backend lint-frontend seed e2e build install
+.PHONY: dev dev-backend dev-frontend cf-dev cf-deploy fly-deploy test test-backend test-frontend lint lint-backend lint-frontend seed e2e e2e-update build install
 
 install:
 	pnpm --dir frontend install
@@ -13,6 +13,15 @@ dev-backend:
 
 dev-frontend:
 	pnpm --dir frontend dev
+
+cf-dev:
+	pnpm --dir frontend preview
+
+cf-deploy:
+	pnpm --dir frontend deploy
+
+fly-deploy:
+	fly deploy --config backend/fly.toml --dockerfile backend/Dockerfile backend
 
 test: test-backend test-frontend
 
@@ -36,6 +45,9 @@ seed:
 
 e2e:
 	pnpm --dir e2e exec playwright test
+
+e2e-update:
+	pnpm --dir e2e exec playwright test --update-snapshots
 
 build:
 	docker compose build

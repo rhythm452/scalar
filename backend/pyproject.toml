@@ -13,6 +13,11 @@ dependencies = [
   "python-multipart>=0.0.9",
 ]
 
+[project.optional-dependencies]
+bind = [
+  "dnspython>=2.6",
+]
+
 [dependency-groups]
 dev = [
   "pytest>=8",
