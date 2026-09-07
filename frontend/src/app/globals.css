@@ -1,0 +1,25 @@
+/* @cloudscape-design/global-styles only ships a normalize reset -- it never paints
+   a page background itself (that's left to whatever Cloudscape component mounts,
+   e.g. AppLayout). The standalone /login page renders no AppLayout (docs/UI-PARITY.md
+   §2: "standalone"), so without this the body stays transparent and whatever sits
+   behind the browser tab shows through. Colors are toggled by the same
+   "awsui-dark-mode" class the blocking script in src/lib/theme.ts applies, so this
+   stays in sync with the no-flash theme init. */
+:root {
+  color-scheme: light dark;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background-color: #ffffff;
+  color: #16191f;
+}
+
+body.awsui-dark-mode {
+  background-color: #0f1b2a;
+  color: #d1d5db;
+}
