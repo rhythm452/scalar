@@ -10,6 +10,7 @@ This document defines the test pyramid, fixtures, mocking strategy, E2E scenario
 4. E2E scenarios
 5. Visual regression
 6. CI wiring
+7. Testing against the Cloudflare Worker preview
 
 ## 1. Test pyramid and targets
 
@@ -65,14 +66,38 @@ Location: `e2e/tests/`. Scenarios mapped 1:1 to assignment requirements:
 
 ## 5. Visual regression
 
-Playwright `toHaveScreenshot` captures full-page and component-level baselines for the zone list, zone detail, record wizard, dark mode, and mobile viewport (1280×720). Baselines live in `e2e/tests/__snapshots__/`. Update via `make e2e-update-snapshots` (runs `pnpm --dir e2e exec playwright test --update-snapshots`). Threshold `maxDiffPixelRatio=0.02` for fonts; anti-flakiness: wait for network idle, hide clock-driven timestamps, mock change status. CI diffs fail the build and upload `playwright-report` as artifact.
+Playwright `toHaveScreenshot` captures full-page and component-level baselines for the zone list, zone detail, record wizard, dark mode, and mobile viewport (1280×720). Baselines live in `e2e/tests/__snapshots__/`. Update via `make e2e-update` (runs `pnpm --dir e2e exec playwright test --update-snapshots`). Threshold `maxDiffPixelRatio=0.02` for fonts; anti-flakiness: wait for network idle, hide clock-driven timestamps, mock change status. CI diffs fail the build and upload `playwright-report` as artifact.
+
+### CI-versus-local platform note
+
+Baselines are generated on the CI Linux Playwright image. They will not match a local macOS run because of font and sub-pixel rendering differences. Do not commit snapshots produced on macOS. To regenerate baselines locally using the same Linux image that CI uses:
+
+```bash
+docker run --rm -it \
+  -v "$PWD:/work" \
+  -w /work \
+  mcr.microsoft.com/playwright:v1.47.0-jammy \
+  sh -c "pnpm install && pnpm --dir e2e exec playwright test --update-snapshots"
+```
+
+Then commit the resulting `e2e/tests/__snapshots__/` files.
 
 ## 6. CI wiring
 
-`.github/workflows/ci.yml` runs three jobs:
+`.github/workflows/ci.yml` runs three test jobs:
 
 1. backend — uv sync, ruff, ruff format check, mypy, pytest with coverage.
 2. frontend — pnpm install --frozen-lockfile, lint, tsc --noEmit, vitest.
 3. e2e — install backend + frontend, install Playwright Chromium, build frontend, run backend in-memory, run Playwright tests.
 
-No deployment is triggered automatically; release is manual via Vercel/Fly CLI per `docs/DEPLOYMENT.md`.
+On pull requests, a `preview` job uploads a Cloudflare Worker version and posts the preview URL as a PR comment. On pushes to `main`, the `deploy` job deploys the frontend to Cloudflare Workers and the backend to Fly.io.
+
+## 7. Testing against the Cloudflare Worker preview
+
+For PR previews and staging, set the E2E base URL to the Worker preview URL:
+
+```bash
+E2E_BASE_URL=https://<preview>.scalar-r53.workers.dev pnpm --dir e2e exec playwright test
+```
+
+The same suite runs against localhost in CI. Tests must not assume the backend is on the same host as the Worker; they only call `/api/*` paths and rely on the Worker proxy.

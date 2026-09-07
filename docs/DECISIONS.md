@@ -13,7 +13,13 @@ This log records every architecture decision reviewable under the judging criter
 7. ADR-007 Surrogate record IDs despite Route 53 natural key
 8. ADR-008 Fly.io volume for SQLite persistence
 9. ADR-009 Change-batch modelling for API realism
-10. Open ADRs
+10. ADR-010 dnspython as an optional dependency group for BIND parsing
+11. ADR-011 Commit visual-regression baselines to the repository
+12. ADR-012 Cloudflare Workers plus OpenNext over Vercel for the frontend
+13. ADR-013 Single-origin Worker proxy over cross-origin CORS
+14. ADR-014 Rejected Cloudflare D1 despite it being SQLite
+15. ADR-015 Demo credentials shown on the login page
+16. Open ADRs
 
 ## 1. ADR-001 Cloudscape over hand-rolled UI
 
@@ -105,9 +111,66 @@ Alternatives considered: No change model, return the record only (rejected: lose
 
 Consequences: Extra insert per mutation inside the same transaction; `GET /changes/{id}` endpoint; UI flashbars quote the change ID.
 
-## 10. Open ADRs
+## 10. ADR-010 dnspython as an optional dependency group for BIND parsing
+
+Context: Phase 7 adds BIND zone-file import and export. Parsing zone files by hand is error-prone for record types like NAPTR, DS, and multi-string TXT.
+
+Decision: Add `dnspython>=2.6` under `[project.optional-dependencies] bind` in `backend/pyproject.toml`. Install in production and CI with `uv sync --extra bind` (or equivalent). The application imports `dns.zone` and `dns.rdatatype` only inside the import/export service.
+
+Alternatives considered: Hand-rolled parser (rejected: high bug surface for graded correctness); `dnspython` as a core dependency (rejected: the rest of the backend does not need it until Phase 7).
+
+Consequences: Slightly larger production image after Phase 7; BIND round-trip fidelity improves; license is ISC-compatible.
+
+## 11. ADR-011 Commit visual-regression baselines to the repository
+
+Context: Playwright `toHaveScreenshot` needs baseline images. The most common failure mode is generating baselines on macOS and comparing them against the Linux CI runner, where font rendering differs.
+
+Decision: Commit baselines to `e2e/tests/__snapshots__/`. Generate and update them using the same Linux Playwright Docker image that CI uses. Provide a `make e2e-update` target and a documented docker command for local regeneration.
+
+Alternatives considered: Git LFS (rejected: extra setup for judges); CI artifacts only (rejected: harder to review diffs in PRs); per-developer baselines (rejected: platform inconsistency).
+
+Consequences: PRs include snapshot diffs; contributors must use the Linux container to update baselines; the platform-caveat is documented plainly.
+
+## 12. ADR-012 Cloudflare Workers plus OpenNext over Vercel for the frontend
+
+Context: Phase 0 originally targeted Vercel for the frontend. The build must still be serverless/edge and easy to link to a public URL.
+
+Decision: Build the Next.js 15 frontend with `@opennextjs/cloudflare` and deploy to Cloudflare Workers via Wrangler. The public URL is `https://scalar-r53.workers.dev`.
+
+Alternatives considered: Vercel (rejected: while simpler, it forces a cross-origin boundary if the backend stays on Fly.io, which conflicts with ADR-013; Cloudflare gives us a programmable proxy at the edge).
+
+Consequences: Build pipeline runs `opennextjs-cloudflare`; local development can use either `next dev` or `wrangler dev`; Wrangler and account credentials are required.
+
+## 13. ADR-013 Single-origin Worker proxy over cross-origin CORS
+
+Context: The FastAPI backend lives on Fly.io and the frontend on Cloudflare Workers. API calls could be cross-origin with CORS, or same-origin via a Worker proxy.
+
+Decision: The Cloudflare Worker intercepts `/api/*` and proxies those requests to the Fly.io FastAPI origin. The browser sees one origin, so the session cookie is first-party (`HttpOnly`, `Secure`, `SameSite=Lax`) and no CORS preflight occurs.
+
+Alternatives considered: Cross-origin with `SameSite=None` cookies and CORS (rejected: Safari ITP and Chrome third-party cookie restrictions can silently drop `SameSite=None` cookies, causing a judge to appear logged out after refresh; this failure is invisible during local same-origin development). A separate API subdomain with CORS and token auth (rejected: conflicts with the mocked session-cookie architecture).
+
+Consequences: Each API request incurs one extra hop (Cloudflare edge → Fly.io origin), adding roughly 30–60 ms; caching is disabled for API paths; the Worker must correctly forward cookies, multipart bodies, status codes, and the AWS error envelope.
+
+## 14. ADR-014 Rejected Cloudflare D1 despite it being SQLite
+
+Context: Cloudflare offers D1, a SQLite-based database. Using it would colocate storage with the Worker.
+
+Decision: Rejected. The assignment mandates SQLite behind FastAPI. D1 is reachable only over HTTP from Python, which would forfeit SQLAlchemy 2.0, Alembic migrations, and the typed declarative model layer that the judging criteria explicitly grade. Persistence is already satisfied by the Fly.io volume.
+
+Consequences: The backend stays on Fly.io; the Worker remains stateless; we keep the full SQLAlchemy/Alembic toolchain.
+
+## 15. ADR-015 Demo credentials shown on the login page
+
+Context: Auth is mocked; judges evaluate many submissions and login friction hurts more than mock security theatre helps.
+
+Decision: The `/login` page renders a Cloudscape `Alert` with `type="info"`, header `"Demo credentials"`, showing username `admin` and password `password123` verbatim. This is an intentional, documented deviation from a real AWS sign-in page.
+
+Alternatives considered: Hidden credentials in README only (rejected: judges may not read it before logging in); real auth (rejected: out of scope).
+
+Consequences: The login page is immediately usable; E2E tests can rely on visible credentials; the deviation is noted in `docs/UI-PARITY.md`.
+
+## 16. Open ADRs
 
 | ID | Question | Recommendation |
 |----|----------|----------------|
-| ADR-010 | BIND parser: hand-rolled vs `dnspython` | Recommend `dnspython` in backend dependencies for import correctness; decide in Phase 7 after license check |
-| ADR-011 | Visual-regression baseline hosting (in-repo LFS vs Playwright artifacts) | Recommend in-repo `e2e/tests/__snapshots__` for reviewability; decide in Phase 8 |
+| ADR-016 | Custom domain vs workers.dev for the public app | Keep workers.dev for the contest to avoid DNS provisioning; move to a custom domain only if required |
