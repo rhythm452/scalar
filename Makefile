@@ -29,7 +29,7 @@ test-backend:
 	uv run --project backend pytest backend/tests -q
 
 test-frontend:
-	pnpm --dir frontend test --run
+	pnpm --dir frontend test
 
 lint: lint-backend lint-frontend
 

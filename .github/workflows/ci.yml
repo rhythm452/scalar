@@ -35,7 +35,7 @@ jobs:
       - run: pnpm --dir frontend install --frozen-lockfile
       - run: pnpm --dir frontend lint
       - run: pnpm --dir frontend exec tsc --noEmit
-      - run: pnpm --dir frontend test --run
+      - run: pnpm --dir frontend test
 
   e2e:
     runs-on: ubuntu-latest
