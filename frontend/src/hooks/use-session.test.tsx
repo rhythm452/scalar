@@ -1,0 +1,29 @@
+import { describe, expect, it } from "vitest";
+import { renderHook, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { http, HttpResponse } from "msw";
+import type { ReactNode } from "react";
+import { useSession } from "@/hooks/use-session";
+import { server } from "../../tests/msw/server";
+import { VALID_USER } from "../../tests/msw/handlers";
+
+function wrapper({ children }: { children: ReactNode }) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+}
+
+describe("useSession", () => {
+  it("surfaces the 401 as an error when logged out (default MSW handler)", async () => {
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await waitFor(() => expect(result.current.isError).toBe(true));
+  });
+
+  it("resolves the session user when authenticated", async () => {
+    server.use(
+      http.get("/api/v1/auth/session", () => HttpResponse.json({ user: VALID_USER }, { status: 200 })),
+    );
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.user.username).toBe("admin");
+  });
+});
