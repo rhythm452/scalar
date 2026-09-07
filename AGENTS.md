@@ -5,6 +5,9 @@ Standing rules for every future coding session on this repository.
 ## Branch and commit discipline
 
 1. Each phase is built on a branch named `phase/N-<slug>` and merged via pull request.
+   Phases 0 through 2 were built as local history before a remote existed and
+   were merged into `main` as a single non-fast-forward merge commit once the
+   repository was published; the PR-per-phase rule applies from Phase 3 onward.
 2. Use Conventional Commits with scope, for example:
    - `feat(records): add CNAME coexistence guard`
    - `fix(api): return correct change status for INSYNC`
