@@ -87,6 +87,7 @@ Deliverables:
 
 Docs sections: `UI-PARITY.md` §1/§2/§5, `ARCHITECTURE.md` §5/§7.
 Exit criteria: Navigating between shell pages feels like AWS; login sets cookie and redirects; session persists across reload.
+Status: completed. Dark/light + density toggles only this phase (visual-refresh stays Phase 7's, per this doc's own §9 assignment); the mocked side-nav sections (Health checks, Traffic policies, Resolver, Profiles, Domains) 404 via `app/not-found.tsx` until Phase 6 builds their Coming Soon pages, which is expected.
 
 ## 6. Phase 4 — Hosted zones
 

@@ -22,6 +22,7 @@ This log records every architecture decision reviewable under the judging criter
 16. Open ADRs
 17. ADR-017 ESLint 9 flat config, migrated now rather than deferred
 18. ADR-018 CI secret-presence gating via a job output, not a job-level `if:`
+19. ADR-019 Two-layer auth guard: middleware cookie presence + client-side session validation
 
 ## 1. ADR-001 Cloudscape over hand-rolled UI
 
@@ -219,3 +220,28 @@ the more urgent problem this session).
 
 Consequences: One extra always-green job (`check-secrets`) in every run; `preview`/`deploy` stay
 skippable without failing; the pattern generalises to any future job gated on optional secrets.
+
+## 19. ADR-019 Two-layer auth guard: middleware cookie presence + client-side session validation
+
+Context: `docs/ARCHITECTURE.md` §7 requires `middleware.ts` to redirect unauthenticated page
+requests to `/login?next=...`. Middleware runs on the edge runtime with only the incoming
+request's cookies available — it cannot make an authenticated round trip to the backend on every
+navigation to validate the session without adding real latency to every page load and duplicating
+the backend's own `get_current_user` dependency.
+
+Decision: Middleware (`frontend/src/proxy/auth-guard.ts`) checks only whether the session cookie
+is *present*, not whether it is still valid; a stale-but-present cookie still passes middleware
+and renders the shell. The compensating second layer is client-side: `useSession()`
+(`GET /api/v1/auth/session`), which the shared `AppShell` calls on mount, is the real validity
+check — a 401 response means the session has actually expired or been revoked server-side.
+
+Alternatives considered: middleware calling `/api/v1/auth/session` on every navigation (rejected:
+adds a network round trip, including cold-start latency on Fly.io, to every single page load for a
+check the client was already going to make); trusting cookie presence alone with no client-side
+fallback (rejected: a user whose session expires mid-visit would be stuck on a shell that can
+never successfully fetch anything, with no path back to `/login`).
+
+Consequences: Middleware stays fast (cookie read only, no I/O, no backend dependency); a stale
+session is caught within one client-side query instead of one round trip per navigation; any
+future protected route gets both layers for free since `useSession` lives in the shared
+`AppShell`, not per-page.
