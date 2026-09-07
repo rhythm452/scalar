@@ -2,7 +2,7 @@
 
 A pixel-faithful, full-stack clone of the AWS Route 53 console: hosted zones, record sets, change batches, tags, and BIND import/export, built with Next.js 15 + Cloudscape and FastAPI + SQLite.
 
-> Live demo: `https://scalar-r53.workers.dev`
+> Not yet deployed — see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) (planned for Phase 9).
 
 ## Table of contents
 
@@ -18,28 +18,34 @@ A pixel-faithful, full-stack clone of the AWS Route 53 console: hosted zones, re
 
 ## 1. Feature checklist
 
-Mapped 1:1 to the assignment scope.
+Mapped 1:1 to the assignment scope. Phase 2 (this session) completed the backend
+API; the frontend (Phases 3–6) has not started, so every item touching UI is
+at most "Partial" — backend implemented and tested, nothing to render it yet.
 
 | # | Scope item | Status | Spec |
 |---|------------|--------|------|
-| 1 | Mock sign-in, session cookie, session persist across reload, logout | Planned | `docs/ARCHITECTURE.md` §6, `docs/API.md` §2 |
-| 2 | Route 53 dashboard with summary counts | Planned | `docs/API.md` §8, `docs/UI-PARITY.md` §2 |
-| 3 | Hosted zone list: search, type filter, sort, cursor pagination, column preferences | Planned | `docs/API.md` §3, `docs/UI-PARITY.md` §2–4 |
-| 4 | Create hosted zone (public/private, VPC, comment) with auto-created NS + SOA | Planned | `docs/ROUTE53-DOMAIN-RULES.md` R1 |
-| 5 | Hosted zone detail with Records / Details / Tags tabs | Planned | `docs/UI-PARITY.md` §2 |
-| 6 | Edit hosted zone comment + tags (only editable fields, mirroring real console) | Planned | `docs/API.md` §3 |
-| 7 | Delete hosted zone with HostedZoneNotEmpty guard + confirm modal | Planned | `docs/ROUTE53-DOMAIN-RULES.md` R3 |
-| 8 | Record table: search, type + routing-policy + alias filters, sort, pagination, bulk delete | Planned | `docs/API.md` §4 |
-| 9 | Quick-create and wizard record creation for all 13 types | Planned | `docs/ROUTE53-DOMAIN-RULES.md` R5–R8 |
-| 10 | Edit record in SplitPanel drawer, delete record with system-record guard | Planned | `docs/ROUTE53-DOMAIN-RULES.md` R2 |
-| 11 | Bulk record batch endpoint (create/delete/upsert) | Planned | `docs/API.md` §4 |
-| 12 | Every mutation returns change ID PENDING → INSYNC; change lookup endpoint | Planned | `docs/ROUTE53-DOMAIN-RULES.md` R11 |
-| 13 | Tags CRUD on hosted zones | Planned | `docs/API.md` §3 |
-| 14 | Mocked Health checks, Traffic policies, Resolver, Profiles, Domains inside AppLayout shell | Planned | `docs/UI-PARITY.md` §2 |
-| 15 | Bonus: BIND import (multipart) and export (json \| bind) | Planned | `docs/API.md` §6 |
+| 1 | Mock sign-in, session cookie, session persist across reload, logout | Partial (backend) | `docs/ARCHITECTURE.md` §6, `docs/API.md` §2 |
+| 2 | Route 53 dashboard with summary counts | Partial (backend) | `docs/API.md` §8, `docs/UI-PARITY.md` §2 |
+| 3 | Hosted zone list: search, type filter, sort, cursor pagination, column preferences | Partial (backend; column preferences is frontend-only) | `docs/API.md` §3, `docs/UI-PARITY.md` §2–4 |
+| 4 | Create hosted zone (public/private, VPC, comment) with auto-created NS + SOA | Partial (backend) | `docs/ROUTE53-DOMAIN-RULES.md` R1 |
+| 5 | Hosted zone detail with Records / Details / Tags tabs | Partial (backend data; tabs are frontend-only) | `docs/UI-PARITY.md` §2 |
+| 6 | Edit hosted zone comment + tags (only editable fields, mirroring real console) | Partial (backend) | `docs/API.md` §3 |
+| 7 | Delete hosted zone with HostedZoneNotEmpty guard + confirm modal | Partial (guard done; confirm modal is frontend-only) | `docs/ROUTE53-DOMAIN-RULES.md` R3 |
+| 8 | Record table: search, type + routing-policy + alias filters, sort, pagination, bulk delete | Partial (backend; bulk delete UI pending) | `docs/API.md` §4 |
+| 9 | Quick-create and wizard record creation for all 13 types | Partial (backend validates/creates all 13; forms pending) | `docs/ROUTE53-DOMAIN-RULES.md` R5–R8 |
+| 10 | Edit record in SplitPanel drawer, delete record with system-record guard | Partial (guard done; drawer is frontend-only) | `docs/ROUTE53-DOMAIN-RULES.md` R2 |
+| 11 | Bulk record batch endpoint (create/delete/upsert) | Done (backend) | `docs/API.md` §4 |
+| 12 | Every mutation returns change ID PENDING → INSYNC; change lookup endpoint | Done (backend) | `docs/ROUTE53-DOMAIN-RULES.md` R11 |
+| 13 | Tags CRUD on hosted zones | Partial (backend) | `docs/API.md` §3 |
+| 14 | Mocked Health checks, Traffic policies, Resolver, Profiles, Domains inside AppLayout shell | Partial (backend stubs return well-formed empties; shell pending) | `docs/UI-PARITY.md` §2 |
+| 15 | Bonus: BIND import (multipart) and export (json \| bind) | Planned (routes registered, return 501; Phase 7) | `docs/API.md` §6 |
 | 16 | Dark mode, density, visual-refresh theming; keyboard shortcuts | Planned | `docs/UI-PARITY.md` §5 |
 | 17 | Flashbar on every mutation, URL-synced filters, unsaved-changes guard | Planned | `docs/UI-PARITY.md` §4 |
 | 18 | E2E + visual regression in `/e2e`, all wired into CI | Planned | `docs/TESTING.md` |
+
+Backend status in full: 175 tests passing (`backend/tests/`), ruff and mypy
+--strict clean, 92% coverage on services + core. See `docs/ROADMAP.md` for
+the phase-by-phase plan.
 
 ## 2. Tech stack
 
