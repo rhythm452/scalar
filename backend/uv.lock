@@ -1107,6 +1107,7 @@ name = "route53-clone-backend"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "aiosqlite" },
     { name = "alembic" },
     { name = "argon2-cffi" },
     { name = "fastapi" },
@@ -1125,7 +1126,6 @@ bind = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "aiosqlite" },
     { name = "factory-boy" },
     { name = "httpx" },
     { name = "mypy" },
@@ -1137,6 +1137,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "aiosqlite", specifier = ">=0.20" },
     { name = "alembic", specifier = ">=1.13" },
     { name = "argon2-cffi", specifier = ">=23.1" },
     { name = "dnspython", marker = "extra == 'bind'", specifier = ">=2.6" },
@@ -1152,7 +1153,6 @@ provides-extras = ["bind"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "aiosqlite", specifier = ">=0.20" },
     { name = "factory-boy", specifier = ">=3.3" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "mypy", specifier = ">=1.11" },
