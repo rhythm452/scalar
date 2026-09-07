@@ -42,6 +42,13 @@ class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
 
 
+def utc_to_storage(value: datetime) -> str:
+    """Render a datetime as the ``YYYY-MM-DDTHH:MM:SSZ`` storage form."""
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=UTC)
+    return value.astimezone(UTC).strftime(ISO_FORMAT)
+
+
 class UTCTimestamp(TypeDecorator[datetime]):
     """TEXT ISO-8601 ``Z`` column surfaced as timezone-aware datetime.
 
@@ -56,9 +63,7 @@ class UTCTimestamp(TypeDecorator[datetime]):
     def process_bind_param(self, value: datetime | None, dialect: object) -> str | None:
         if value is None:
             return None
-        if value.tzinfo is None:
-            value = value.replace(tzinfo=UTC)
-        return value.astimezone(UTC).strftime(ISO_FORMAT)
+        return utc_to_storage(value)
 
     def process_result_value(self, value: str | None, dialect: object) -> datetime | None:
         if value is None:

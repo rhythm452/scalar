@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import Connection, engine_from_config, pool
 
 from alembic import context
 from app.models import Base
@@ -18,8 +18,11 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-db_url = os.environ.get("DATABASE_URL", config.get_main_option("sqlalchemy.url"))
-config.set_main_option("sqlalchemy.url", db_url)
+db_url = os.environ.get("DATABASE_URL") or config.get_main_option("sqlalchemy.url")
+if db_url is not None:
+    # Programmatic runs that pass attributes["connection"] may carry no URL at
+    # all; only register it when one exists.
+    config.set_main_option("sqlalchemy.url", db_url)
 
 target_metadata = Base.metadata
 
@@ -43,14 +46,26 @@ def run_migrations_online() -> None:
             prefix="sqlalchemy.",
             poolclass=pool.NullPool,
         )
-    with connectable.connect() as connection:
-        context.configure(
-            connection=connection,
-            target_metadata=target_metadata,
-            render_as_batch=True,
-        )
-        with context.begin_transaction():
-            context.run_migrations()
+    from sqlalchemy.engine import Engine
+
+    if isinstance(connectable, Engine):
+        with connectable.connect() as connection:
+            _run_on(connection)
+    else:
+        # A Connection may be supplied directly so tests can run migrations
+        # over an existing in-memory connection.
+        assert isinstance(connectable, Connection)
+        _run_on(connectable)
+
+
+def _run_on(connection: Connection) -> None:
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        render_as_batch=True,
+    )
+    with context.begin_transaction():
+        context.run_migrations()
 
 
 if context.is_offline_mode():
