@@ -8,13 +8,14 @@ Phased build plan. Each phase lists deliverables, the docs sections it implement
 2. Phase 0.5 — Cloudflare deployment layer
 3. Phase 1 — Backend models, migrations, repositories, services, rules, seed
 4. Phase 2 — Backend routers, error envelope, pagination, integration tests
-5. Phase 3 — Frontend shell
-6. Phase 4 — Hosted zones
-7. Phase 5 — Records
-8. Phase 6 — Mocked sections inside the shell
-9. Phase 7 — Bonus: import/export, dark mode, keyboard shortcuts
-10. Phase 8 — E2E + visual regression + CI green
-11. Phase 9 — Deploy, screenshots, demo recording, final polish
+5. Phase 2.5 — Repair and hardening
+6. Phase 3 — Frontend shell
+7. Phase 4 — Hosted zones
+8. Phase 5 — Records
+9. Phase 6 — Mocked sections inside the shell
+10. Phase 7 — Bonus: import/export, dark mode, keyboard shortcuts
+11. Phase 8 — E2E + visual regression + CI green
+12. Phase 9 — Deploy, screenshots, demo recording, final polish
 
 ## 1. Phase 0 — Repo + docs
 
@@ -42,6 +43,7 @@ Deliverables:
 
 Docs sections: `DATABASE.md`, `ROUTE53-DOMAIN-RULES.md`, `ARCHITECTURE.md` §4/§6.
 Exit criteria: `make test-backend` passes with >85% services/routers coverage; seed produces predictable data; all R1–R11 tested.
+Status: completed.
 
 ## 4. Phase 2 — Backend: API routers, error envelope, pagination, integration tests
 
@@ -56,6 +58,23 @@ Deliverables:
 
 Docs sections: `API.md` §1–§8, `ARCHITECTURE.md` §3–§4.
 Exit criteria: every API endpoint has a curl-working router and integration test; `make lint` passes; cursor pagination tested.
+Status: completed.
+
+## 4.5. Phase 2.5 — Repair and hardening
+
+Deliverables: publish the repo (GitHub remote, CI actually exercised and made
+green rather than assumed, branch protection); close the five previously-
+unverified audit items (`uv sync --frozen`, `docker compose up --build`,
+SQLite pragmas under real pool concurrency, the Cloudflare Worker proxy
+against a live origin, frontend tsc/eslint against the still-empty
+scaffold); rebalance the seed's record-type and routing-policy
+distribution; `make doctor` as a repeatable mechanical gate; ESLint 9
+migration; documentation truth pass.
+Docs sections: this ROADMAP, `docs/TESTING.md` §1/§6, `docs/DATABASE.md`
+§13, `docs/DEPLOYMENT.md`, `AGENTS.md`, `CLAUDE.md` (new), `docs/DECISIONS.md`.
+Exit criteria: `make doctor` passes; CI green on a real pushed branch, not
+assumed; seed covers every record type with >=6 examples each.
+Status: completed.
 
 ## 5. Phase 3 — Frontend shell
 

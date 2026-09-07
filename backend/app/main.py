@@ -37,5 +37,5 @@ app.include_router(api_v1_router, prefix="/api/v1")
 
 
 @app.get("/api/v1/health")
-async def health() -> dict[str, str]:
-    return {"ok": "true", "version": "0.1.0"}
+async def health() -> dict[str, bool | str]:
+    return {"ok": True, "version": "0.1.0"}

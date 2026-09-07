@@ -20,6 +20,8 @@ This log records every architecture decision reviewable under the judging criter
 14. ADR-014 Rejected Cloudflare D1 despite it being SQLite
 15. ADR-015 Demo credentials shown on the login page
 16. Open ADRs
+17. ADR-017 ESLint 9 flat config, migrated now rather than deferred
+18. ADR-018 CI secret-presence gating via a job output, not a job-level `if:`
 
 ## 1. ADR-001 Cloudscape over hand-rolled UI
 
@@ -174,3 +176,46 @@ Consequences: The login page is immediately usable; E2E tests can rely on visibl
 | ID | Question | Recommendation |
 |----|----------|----------------|
 | ADR-016 | Custom domain vs workers.dev for the public app | Keep workers.dev for the contest to avoid DNS provisioning; move to a custom domain only if required |
+
+## 17. ADR-017 ESLint 9 flat config, migrated now rather than deferred
+
+Context: `eslint@8.57.0` is end-of-life; `eslint-config-next@15.5.25`'s `peerDependencies` already
+support `^9`. Migrating means moving from `.eslintrc.json` to flat-config `eslint.config.mjs`.
+
+Decision: Migrate to ESLint 9 during the Phase 2.5 repair pass, before any frontend application
+code exists, using `@eslint/eslintrc`'s `FlatCompat` to bridge `eslint-config-next`'s still-legacy-
+shaped config (`compat.extends("next/core-web-vitals")`) into flat config.
+
+Alternatives considered: defer to Phase 3 or later (rejected: at that point real application code
+and possibly custom lint rules/overrides exist, turning a mechanical migration into one that can
+break a lint config a judge is actively looking at, for the same eventual work); stay on ESLint 8
+for the whole contest (rejected: ships a visibly end-of-life tool, a code-quality signal explicitly
+graded).
+
+Consequences: `eslint-config-next`'s peer range caps at `^9`, not the now-current `10.x` line, so
+`9.x` (itself past npm's own "no longer supported" window as of this session) is what's actually
+achievable today; moving to 10 is blocked on `eslint-config-next` (or Next's own tooling)
+catching up, not something to force. `@testing-library/jest-dom` was pinned to `6.9.1` in the same
+pass for an unrelated but adjacent reason: `6.10.0` is a flagged bad release requiring Node >=22 in
+what should have been a non-breaking minor.
+
+## 18. ADR-018 CI secret-presence gating via a job output, not a job-level `if:`
+
+Context: `preview`/`deploy` jobs need `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID`/
+`FLY_API_TOKEN`, which don't exist as repository secrets yet. Without a guard, those jobs fail
+outright instead of skipping, and a lint-and-test pipeline shouldn't depend on deployment
+credentials to stay green.
+
+Decision: A `check-secrets` job computes presence inside a step (`env:`/`run:` can read `secrets`
+fine) and exposes it as a job `output`; `preview`/`deploy` key their `if:` off
+`needs.check-secrets.outputs.has_cloudflare`/`has_fly` instead.
+
+Alternatives considered: `if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}` directly on the job
+(rejected: reproduced twice — GitHub rejects the entire workflow file at parse time when a
+job-level `if:` references the `secrets` context at all, wrapped in `${{ }}` or not; this isn't
+documented anywhere obvious and cost real iteration to isolate). Requiring the secrets to exist
+before merging (rejected: blocks publishing the repository and getting CI green at all, which was
+the more urgent problem this session).
+
+Consequences: One extra always-green job (`check-secrets`) in every run; `preview`/`deploy` stay
+skippable without failing; the pattern generalises to any future job gated on optional secrets.

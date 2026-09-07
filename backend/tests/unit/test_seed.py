@@ -30,7 +30,7 @@ async def test_seed_second_run_is_a_no_op(db) -> None:
 
     counts_first = await _counts(db)
     ids_first = await _ids(db)
-    assert counts_first == (14, 92, 2)
+    assert counts_first == (14, 124, 2)
 
     wrote_second = await run_seed(db)
     assert wrote_second is False

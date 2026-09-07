@@ -6,10 +6,13 @@ the database untouched and the next boot retries. The demo user is
 ``admin`` / ``password123``.
 
 The dataset is intentionally rich so the Phase 2 console has something to
-show on every screen: 14 zones (two private with VPCs), a 60+ record demo
-zone covering every record type, aliases, weighted/failover/latency/
-multivalue routing, tags on several zones, and old change batches that
-read back as INSYNC via R11.
+show on every screen: 14 zones (two private with VPCs), a 96-record demo
+zone covering every record type (>=6 of each), aliases, weighted/failover/
+latency/geolocation/multivalue routing (15 non-simple records total, each
+policy with more than one row), 24 multi-value record sets spread across
+seven types (A/AAAA/CAA/MX/NS/SRV/TXT), tags on several zones, and old
+change batches that read back as INSYNC via R11. 124 records total, 28 of
+them the auto NS/SOA every zone gets.
 """
 
 from __future__ import annotations
@@ -226,6 +229,123 @@ def demo_records() -> list[tuple[ResourceRecordSet, list[str]]]:
             _record(z, "edge", "A", ttl=60, routing_policy="multivalue", set_identifier="edge-3"),
             ["203.0.113.12"],
         ),
+        # Latency and weighted routing get more than one comparison point,
+        # and geolocation (unused above) gets its first real examples,
+        # including the default catch-all Route 53 conventionally shows.
+        (
+            _record(
+                z,
+                "api-us",
+                "A",
+                ttl=60,
+                routing_policy="latency",
+                set_identifier="us-east",
+                region="us-east-1",
+            ),
+            ["198.51.100.21"],
+        ),
+        (
+            _record(
+                z,
+                "api-ap",
+                "A",
+                ttl=60,
+                routing_policy="latency",
+                set_identifier="ap-southeast",
+                region="ap-southeast-1",
+            ),
+            ["198.51.100.31"],
+        ),
+        (
+            _record(
+                z, "geo", "A", ttl=60, routing_policy="weighted", set_identifier="east", weight=50
+            ),
+            ["192.0.2.32"],
+        ),
+        (
+            _record(
+                z,
+                "shop",
+                "A",
+                ttl=60,
+                routing_policy="geolocation",
+                set_identifier="united-states",
+                geo_country="US",
+            ),
+            ["192.0.2.60"],
+        ),
+        (
+            _record(
+                z,
+                "shop",
+                "A",
+                ttl=60,
+                routing_policy="geolocation",
+                set_identifier="united-kingdom",
+                geo_country="GB",
+            ),
+            ["192.0.2.61"],
+        ),
+        (
+            _record(
+                z,
+                "shop",
+                "A",
+                ttl=60,
+                routing_policy="geolocation",
+                set_identifier="asia",
+                geo_continent="AS",
+            ),
+            ["192.0.2.62"],
+        ),
+        (
+            _record(z, "shop", "A", ttl=60, routing_policy="geolocation", set_identifier="default"),
+            ["192.0.2.63"],
+        ),
+        # AAAA: six real subdomains, one multi-value (dual-homed).
+        (_record(z, "api", "AAAA", ttl=60), ["2001:db8::11", "2001:db8::12"]),
+        (_record(z, "mail", "AAAA", ttl=3600), ["2001:db8::20"]),
+        (_record(z, "cdn", "AAAA", ttl=300), ["2001:db8:100::10"]),
+        (_record(z, "vpn", "AAAA", ttl=300), ["2001:db8:200::5"]),
+        (_record(z, "status", "AAAA", ttl=300), ["2001:db8:300::1"]),
+        # MX: six subdomains route mail somewhere, one multi-value with a
+        # backup exchanger.
+        (_record(z, "shop", "MX", ttl=3600), ["10 mail.example.com."]),
+        (_record(z, "support", "MX", ttl=3600), ["10 mx1.example.com."]),
+        (_record(z, "status", "MX", ttl=3600), ["10 mail.example.com."]),
+        (
+            _record(z, "blog", "MX", ttl=3600),
+            ["10 mail.example.com.", "20 mail2.example.com."],
+        ),
+        (_record(z, "api", "MX", ttl=3600), ["10 mail.example.com."]),
+        # PTR: five more reverse-style entries alongside the original.
+        (_record(z, "5.2.0.192.in-addr", "PTR", ttl=300), ["api.example.com."]),
+        (_record(z, "6.2.0.192.in-addr", "PTR", ttl=300), ["mail.example.com."]),
+        (_record(z, "10.2.0.192.in-addr", "PTR", ttl=300), ["shop.example.com."]),
+        (_record(z, "11.2.0.192.in-addr", "PTR", ttl=300), ["status.example.com."]),
+        (_record(z, "30.2.0.192.in-addr", "PTR", ttl=300), ["edge.example.com."]),
+        # CAA: five more issuer restrictions, one multi-value (issue + issuewild).
+        (_record(z, "shop", "CAA", ttl=3600), ['0 issue "letsencrypt.org"']),
+        (_record(z, "api", "CAA", ttl=3600), ['0 issue "digicert.com"']),
+        (
+            _record(z, "status", "CAA", ttl=3600),
+            ['0 issue "letsencrypt.org"', '0 issuewild "letsencrypt.org"'],
+        ),
+        (_record(z, "mail", "CAA", ttl=3600), ['0 issue "letsencrypt.org"']),
+        (_record(z, "blog", "CAA", ttl=3600), ['0 issue "letsencrypt.org"']),
+        # SRV: four more services, one multi-value (two STUN targets).
+        (_record(z, "_minecraft._tcp", "SRV", ttl=300), ["0 5 25565 game.example.com."]),
+        (_record(z, "_ldap._tcp", "SRV", ttl=300), ["10 0 389 ldap.example.com."]),
+        (_record(z, "_caldav._tcp", "SRV", ttl=300), ["0 5 8443 cal.example.com."]),
+        (
+            _record(z, "_stun._udp", "SRV", ttl=300),
+            ["10 5 3478 stun1.example.com.", "20 5 3478 stun2.example.com."],
+        ),
+        # One more multi-value TXT (a realistic dual-token ACME challenge).
+        (
+            _record(z, "_acme-challenge", "TXT", ttl=300),
+            ['"gfj9Xq...Rg85nM"', '"8Ohw2R...Fx4kQ2"'],
+        ),
     ]
     for i in range(1, 36):
         host = f"host{i:02d}"
@@ -249,6 +369,9 @@ def _record(
     weight: int | None = None,
     region: str | None = None,
     failover: str | None = None,
+    geo_continent: str | None = None,
+    geo_country: str | None = None,
+    geo_subdivision: str | None = None,
     is_alias: int = 0,
     alias_target: str | None = None,
     alias_hosted_zone_id: str | None = None,
@@ -264,6 +387,9 @@ def _record(
         weight=weight,
         region=region,
         failover=failover,
+        geo_continent=geo_continent,
+        geo_country=geo_country,
+        geo_subdivision=geo_subdivision,
         is_alias=is_alias,
         alias_target=alias_target,
         alias_hosted_zone_id=alias_hosted_zone_id,

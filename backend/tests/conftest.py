@@ -206,7 +206,7 @@ async def authed_client(client: AsyncClient, user: User) -> AsyncClient:
 
 @pytest.fixture
 async def demo_zone_id(seeded_client: AsyncClient) -> str:
-    """The id of the seeded `example.com.` zone -- the one with 66 record
+    """The id of the seeded `example.com.` zone -- the one with 96 record
     sets covering every type and routing policy (docs/DATABASE.md §13)."""
     zones = (
         await seeded_client.get(

@@ -16,23 +16,28 @@ This document defines the test pyramid, fixtures, mocking strategy, E2E scenario
 
 | Layer | Tool | Target | Run command |
 |-------|------|--------|-------------|
-| Backend unit + integration | pytest + httpx AsyncClient + aiosqlite | >85% services/routers | `make test-backend` |
+| Backend unit + integration | pytest + httpx AsyncClient + aiosqlite | >=85% on services/core | `make test-backend` |
 | Frontend unit + component | Vitest + React Testing Library + jsdom | >70% components | `make test-frontend` |
 | End-to-end + visual regression | Playwright | 100% critical paths green | `make e2e` |
 | Lint/types | Ruff, mypy, ESLint, tsc | zero warnings | `make lint` |
+| Full mechanical gate | `scripts/doctor.sh` (migrations, layering, pragma concurrency, coverage floor, seed idempotency, OpenAPI/docs parity, secret scan, frontend build) | all pass | `make doctor` |
 
 Coverage is a target, not a hard gate; behaviour is. Tests run in CI on every push and pull request.
+`make doctor` is the required gate before merging any phase branch (AGENTS.md) and runs in CI too.
 
 ## 2. Backend tests
 
 Location: `backend/tests/`. Layout:
 
-- `conftest.py` — session-scoped event loop, in-memory SQLite async engine (`sqlite+aiosqlite:///:memory:`), tables created via Alembic `upgrade`/`downgrade` around the test session, `AsyncSession` fixture per test, authenticated `client` fixture logging in as a seeded user.
-- `factories.py` — `UserFactory`, `HostedZoneFactory`, `RecordSetFactory`, `ValueFactory`.
-- `test_rules.py` — domain rules R1–R11, each in isolation.
-- `test_services_zones.py` / `test_services_records.py` — service-layer CRUD and transactions.
-- `test_api_*.py` — router-level integration tests using `httpx.AsyncClient` against FastAPI app.
-- `test_seed.py` — idempotency and boot-empty detection.
+- `conftest.py` — per-test in-memory SQLite async engine (`sqlite+aiosqlite://` + `StaticPool`), schema from `alembic upgrade head` run over that connection (never `create_all`), typed service fixtures, an unauthenticated `client` and a logged-in `authed_client`/`seeded_client` (full demo dataset) against the real ASGI app.
+- `unit/test_rules.py` — domain rules R1–R11, each in isolation.
+- `unit/test_rdata.py` / `unit/test_dns_names.py` — per-type record-data and DNS-name validators.
+- `unit/test_layering.py` — the AST-based import-direction contract.
+- `unit/test_migration_parity.py` — Alembic schema vs. `Base.metadata.create_all` structural equality.
+- `unit/test_seed.py` — idempotency and boot-empty detection.
+- `unit/test_tags.py`, `unit/test_record_service_more.py` — additional service-layer coverage found while closing coverage gaps.
+- `integration/test_auth.py`, `test_crud.py`, `test_filters.py`, `test_pagination.py`, `test_errors.py` — router-level integration tests over real HTTP (`httpx.AsyncClient`) against the FastAPI app, including the AWS error envelope.
+- `integration/test_pragma_concurrency.py` — SQLite pragmas under real pooled connection concurrency, not just the single-connection in-memory engine every other test uses.
 
 In-memory SQLite: each test gets a fresh schema from the migration baseline, no shared state, no manual `Base.metadata.create_all`. Tests assert the counter stays in sync with record inserts/deletes, system records are protected, CNAME coexistence is rejected, and error bodies match the AWS envelope.
 
@@ -84,13 +89,15 @@ Then commit the resulting `e2e/tests/__snapshots__/` files.
 
 ## 6. CI wiring
 
-`.github/workflows/ci.yml` runs three test jobs:
+`.github/workflows/ci.yml` runs:
 
-1. backend — uv sync, ruff, ruff format check, mypy, pytest with coverage.
-2. frontend — pnpm install --frozen-lockfile, lint, tsc --noEmit, vitest.
-3. e2e — install backend + frontend, install Playwright Chromium, build frontend, run backend in-memory, run Playwright tests.
+1. `check-secrets` — computes whether Cloudflare/Fly secrets exist, as a job output; `preview`/`deploy` key off this instead of referencing `secrets` directly in a job-level `if:` (GitHub rejects that at parse time).
+2. `backend` — uv sync, ruff, ruff format check, mypy, pytest with coverage.
+3. `frontend` — pnpm install --frozen-lockfile, lint, tsc --noEmit, vitest.
+4. `e2e` — install backend + frontend, install Playwright Chromium, build frontend, run backend in-memory, run Playwright tests (skips the Playwright run itself, not the setup, while `e2e/tests` has no specs yet).
+5. `doctor` — runs `make doctor` (`scripts/doctor.sh`) in full.
 
-On pull requests, a `preview` job uploads a Cloudflare Worker version and posts the preview URL as a PR comment. On pushes to `main`, the `deploy` job deploys the frontend to Cloudflare Workers and the backend to Fly.io.
+On pull requests, a `preview` job uploads a Cloudflare Worker version and posts the preview URL as a PR comment, only when `CLOUDFLARE_API_TOKEN` is set. On pushes to `main`, the `deploy` job deploys the frontend to Cloudflare Workers and the backend to Fly.io, only when both Cloudflare and Fly secrets are set. `backend`/`frontend`/`e2e`/`doctor` are unconditional and stay green independently of deployment credentials.
 
 ## 7. Testing against the Cloudflare Worker preview
 
