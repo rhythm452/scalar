@@ -43,14 +43,28 @@ In-memory SQLite: each test gets a fresh schema from the migration baseline, no 
 
 ## 3. Frontend tests
 
-Location: `frontend/src/**/*.test.{ts,tsx}` and `frontend/tests/`.
+Location: `frontend/src/**/*.test.{ts,tsx}` and `frontend/tests/`. `frontend/tests/msw/handlers.ts` +
+`server.ts` hold the MSW v2 mock server (`setupServer` from `msw/node`), wired into
+`frontend/tests/setup.ts` (`server.listen/resetHandlers/close`, plus a `window.matchMedia` mock —
+jsdom doesn't implement it and Cloudscape's responsive hooks call it directly).
 
-- Component tests: render Cloudscape islands with `@testing-library/react`, mock TanStack Query via `msw` or a wrapper with a fake query client.
-- Hook tests: `useHostedZones`, `useCreateRecord`, etc. verified with `renderHook` + MSW.
-- Form tests: submit invalid payloads and assert Zod error messages appear as `errorText`.
-- API client tests: base64 cursor round-trip, error-envelope parser.
+Handlers are registered with **path-only patterns** (`http.post("/api/v1/auth/login", ...)`, no
+origin) — Vitest's jsdom default origin is `http://localhost:3000`, but `apiFetch`
+(`src/lib/api-client.ts`) calls same-origin-relative paths by design (ADR-013), so a handler
+registered against a literal `http://localhost:8000/...` origin would never match.
 
-MSW handles API mocking at `http://localhost:8000/api/v1/*`. Tests assert loading, success, and error states; they mock `window.matchMedia` for Cloudscape responsive hooks and mock `next/navigation` where needed.
+Phase 3 test files (pattern for later phases to extend):
+
+- `src/lib/api-client.test.ts` — success/error-envelope parsing, `buildQueryString`/cursor round-trip.
+- `src/lib/safe-redirect.test.ts` — `sanitizeNextParam` against safe paths and open-redirect attempts.
+- `src/proxy/auth-guard.test.ts` — the middleware page-guard's pure functions plus a real constructed `NextRequest`.
+- `src/hooks/use-session.test.tsx`, `use-login.test.tsx` — `renderHook` + `QueryClientProvider` + MSW.
+- `src/components/login/login-page-client.test.tsx` — Zod validation errors, 401 alert, sanitized-redirect navigation; mocks `next/navigation`.
+- `src/components/shell/app-shell.test.tsx` — side navigation items, session-derived identity.
+- `src/components/dashboard/dashboard-cards.test.tsx` — loading vs. loaded card copy.
+
+Form tests submit invalid payloads and assert Zod error messages appear as `errorText`. Tests
+assert loading, success, and error states.
 
 ## 4. E2E scenarios
 

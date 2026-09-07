@@ -130,7 +130,7 @@ Mocked credential check: `POST /api/v1/auth/login` compares the username against
 
 Opaque session token: on success the backend generates a `secrets.token_urlsafe(32)` token, stores only its SHA-256 hash in `sessions.token`, sets `expires_at` to now plus `SESSION_EXPIRE_HOURS`, and returns the raw token once in a `Set-Cookie` header (`httpOnly`, `SameSite=Lax`, `Secure` in production, `Path=/`).
 
-Middleware-protected routes: frontend `middleware.ts` allows `/login` and static assets, and redirects all other routes to `/login?next=...` when the session cookie is absent. Backend auth dependency independently enforces 401 on every `/api/v1` route except `/health` and `POST /auth/login`.
+Middleware-protected routes: frontend `middleware.ts` allows `/login` and static assets, and redirects all other routes to `/login?next=...` when the session cookie is absent. Backend auth dependency independently enforces 401 on every `/api/v1` route except `/health` and `POST /auth/login`. Middleware only checks cookie *presence*, not validity (no backend round trip on every navigation); the client-side compensating layer is `useSession()` in the shared `AppShell`, whose 401 triggers a redirect to `/login?next=...` when a present-but-expired cookie slips past middleware (ADR-019).
 
 Session persistence across reload: the cookie survives reload; the root layout calls `GET /api/v1/auth/session` on mount via `useSession` and hydrates the `TopNavigation` identity menu. `last_seen_at` refreshes on each authenticated request. Logout deletes the session row and clears the cookie.
 
