@@ -126,7 +126,7 @@ Error translation: services raise `Route53Error` carrying `aws_code`, `message`,
 
 ## 7. Auth architecture
 
-Mocked credential check: `POST /api/v1/auth/login` compares the username against the seeded user and verifies the password hash with bcrypt. There are no roles and no AWS IAM; every authenticated user owns their own zones.
+Mocked credential check: `POST /api/v1/auth/login` compares the username against the seeded user and verifies the password hash with passlib argon2 (argon2id; the earlier bcrypt mentions were upgraded before the auth service landed). There are no roles and no AWS IAM; every authenticated user owns their own zones.
 
 Opaque session token: on success the backend generates a `secrets.token_urlsafe(32)` token, stores only its SHA-256 hash in `sessions.token`, sets `expires_at` to now plus `SESSION_EXPIRE_HOURS`, and returns the raw token once in a `Set-Cookie` header (`httpOnly`, `SameSite=Lax`, `Secure` in production, `Path=/`).
 

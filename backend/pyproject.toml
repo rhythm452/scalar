@@ -6,11 +6,13 @@ requires-python = ">=3.12"
 dependencies = [
   "fastapi>=0.115",
   "uvicorn[standard]>=0.30",
-  "sqlalchemy>=2.0",
+  "sqlalchemy[asyncio]>=2.0",
   "alembic>=1.13",
   "pydantic>=2.7",
   "pydantic-settings>=2.3",
   "python-multipart>=0.0.9",
+  "passlib>=1.7.4",
+  "argon2-cffi>=23.1",
 ]
 
 [project.optional-dependencies]
@@ -44,13 +46,29 @@ warn_return_any = true
 warn_unused_configs = true
 plugins = ["pydantic.mypy"]
 
+[[tool.mypy.overrides]]
+# passlib ships no type stubs (upstream issue #89); typed at call sites below.
+module = "passlib.*"
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 
-[tool.alembic]
-script_location = "migrations"
+[tool.coverage.run]
+# SQLAlchemy's async ORM bridges to sync code via greenlet_spawn(); without
+# this, coverage silently under-reports every line that runs inside that
+# switch (which, for this codebase, is most of the service layer) with no
+# warning that the number is wrong.
+concurrency = ["greenlet", "thread"]
+source = ["app"]
+
+[tool.coverage.report]
+exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:"]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]

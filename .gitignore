@@ -5,11 +5,10 @@ out/
 dist/
 build/
 *.tsbuildinfo
-.next-env.d.ts
+next-env.d.ts
 
 # pnpm
 .pnpm-store/
-pnpm-lock.yaml
 .pnpm-debug.log*
 
 # Python
