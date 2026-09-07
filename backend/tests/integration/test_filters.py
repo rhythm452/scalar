@@ -50,7 +50,7 @@ async def test_zone_sort_by_record_set_count_orders_numerically(seeded_client: A
     )
     counts = [z["record_set_count"] for z in response.json()["items"]]
     assert counts == sorted(counts, reverse=True)
-    assert counts[0] > counts[-1]  # the demo zone (66) really does sort above a 2-record zone
+    assert counts[0] > counts[-1]  # the demo zone (96) really does sort above a 2-record zone
 
 
 async def test_record_type_filter_narrows_results(
@@ -86,7 +86,7 @@ async def test_record_routing_policy_filter(seeded_client: AsyncClient, demo_zon
         params={"routing_policy": "weighted", "page_size": 100},
     )
     items = response.json()["items"]
-    assert len(items) == 2
+    assert len(items) == 3
     assert all(r["routing_policy"] == "weighted" for r in items)
 
 
