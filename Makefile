@@ -41,7 +41,7 @@ lint-frontend:
 	pnpm --dir frontend exec tsc --noEmit
 
 seed:
-	uv run --project backend python -m app.seed.seed --app-dir backend
+	uv run --project backend python -m app.seed.seed
 
 e2e:
 	@if find e2e/tests -name '*.spec.ts' | grep -q .; then \

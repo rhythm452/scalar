@@ -59,4 +59,6 @@ async def test_pragmas_apply_to_every_pooled_connection_under_concurrency(
     assert len(results) == CONCURRENT_CONNECTIONS
     for foreign_keys, journal_mode in results:
         assert foreign_keys == 1, "PRAGMA foreign_keys was not ON for a pooled connection"
-        assert journal_mode.lower() == "wal", "PRAGMA journal_mode was not WAL for a pooled connection"
+        assert journal_mode.lower() == "wal", (
+            "PRAGMA journal_mode was not WAL for a pooled connection"
+        )

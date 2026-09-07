@@ -84,7 +84,7 @@ Frontend: `http://localhost:3000`. Backend: `http://localhost:8000/docs`. Seed u
 ```bash
 cp .env.example .env
 uv sync --project backend
-uv run --project backend alembic upgrade head
+uv run --project backend alembic -c backend/alembic.ini upgrade head
 uv run --project backend python -m app.seed.seed
 uv run --project backend uvicorn app.main:app --reload --app-dir backend --port 8000
 pnpm --dir frontend install
@@ -98,7 +98,7 @@ cp frontend/.dev.vars.example frontend/.dev.vars
 pnpm --dir frontend preview   # opennextjs-cloudflare build + wrangler dev
 ```
 
-Seed is idempotent and runs on backend boot when the DB is empty (`docs/DATABASE.md` §9).
+Seed is idempotent and runs on backend boot when the DB is empty (`docs/DATABASE.md` §13).
 
 ## 4. Repository structure
 
