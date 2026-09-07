@@ -1,0 +1,66 @@
+# Node
+node_modules/
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+.next-env.d.ts
+
+# pnpm
+.pnpm-store/
+pnpm-lock.yaml
+.pnpm-debug.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+.env/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# SQLite
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+e2e/test-results/
+e2e/playwright-report/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Vercel / Fly
+.vercel
+.fly/
+fly.toml.local
+
+# Logs
+*.log
+npm-debug.log*
