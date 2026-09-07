@@ -2,6 +2,8 @@
 
 A pixel-faithful, full-stack clone of the AWS Route 53 console: hosted zones, record sets, change batches, tags, and BIND import/export, built with Next.js 15 + Cloudscape and FastAPI + SQLite.
 
+Repository: [github.com/rhythm452/scalar](https://github.com/rhythm452/scalar)
+
 > Not yet deployed — see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) (planned for Phase 9).
 
 ## Table of contents
@@ -43,9 +45,9 @@ at most "Partial" — backend implemented and tested, nothing to render it yet.
 | 17 | Flashbar on every mutation, URL-synced filters, unsaved-changes guard | Planned | `docs/UI-PARITY.md` §4 |
 | 18 | E2E + visual regression in `/e2e`, all wired into CI | Planned | `docs/TESTING.md` |
 
-Backend status in full: 175 tests passing (`backend/tests/`), ruff and mypy
---strict clean, 92% coverage on services + core. See `docs/ROADMAP.md` for
-the phase-by-phase plan.
+Backend status in full: 177 tests passing (`backend/tests/`), ruff and mypy
+--strict clean, 89% coverage on services + core (`make doctor`'s floor is
+85%). See `docs/ROADMAP.md` for the phase-by-phase plan.
 
 ## 2. Tech stack
 
