@@ -203,7 +203,11 @@ Relationship table:
 
 ## 13. Seed data
 
-The idempotent seed script (`backend/app/seed/seed.py`) runs on backend boot when `SEED_ON_BOOT=true` and `users` is empty. It creates user `admin` / `password123` (argon2 hash, email `admin@example.com`, account id `123456789012`), one public zone `example.com.` with comment `Seeded demo zone`, its auto NS/SOA system records, plus sample records `www.example.com. A 300 192.0.2.1`, `mail.example.com. MX 300 10 mail.example.com.`, and `_sip._tcp.example.com. SRV`. Re-running changes nothing: it checks username and zone name existence first.
+The idempotent seed script (`backend/app/seed/seed.py`) runs on backend boot when `SEED_ON_BOOT=true` and `users` is empty. It creates user `admin` / `password123` (argon2 hash, email `admin@example.com`, account id `123456789012`) and 14 hosted zones: twelve public (including `example.com.` with comment `Seeded demo zone`) and two private with VPC ids/regions (`corp.internal.` in `vpc-0a1b2c3d4e`/`us-east-1`, `vpn.internal.` in `vpc-0f5e6d7c8b`/`eu-west-1`). Every zone gets its auto NS/SOA system records via the same R1 constants as the service layer.
+
+The demo zone `example.com.` carries 66 record sets covering every type (A, AAAA, CNAME, TXT, MX, NS delegation, PTR, SRV, CAA, SPF, NAPTR, DS, plus the system NS/SOA), 3 alias records, a weighted pair sharing one name (`geo`), a PRIMARY/SECONDARY failover pair (`db`), a latency record (`api-eu`), a 3-answer multivalue set (`edge`), and numbered `hostNN` filler records so pagination and filters have real data. Five zones carry tags, and two change batches (`CSEED0000000001/2`) are written with PENDING status and week-old `submitted_at`, so `GET /changes/{id}` derives INSYNC through R11.
+
+Re-running changes nothing: the guard is `COUNT(users) = 0`, and the whole dataset is written in a single transaction so a crash mid-seed leaves the database empty and the next boot retries.
 
 ## 14. Complete DDL
 
