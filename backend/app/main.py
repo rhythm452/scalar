@@ -1,4 +1,5 @@
 """FastAPI application scaffold. Implemented in Phase 2."""
+
 from __future__ import annotations
 
 from fastapi import FastAPI

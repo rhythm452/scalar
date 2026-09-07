@@ -4,6 +4,7 @@ CORS exists only for the local `next dev` path. In production the Cloudflare
 Worker proxies /api/* from the same origin, so cross-origin preflights never
 occur and CORS_ORIGINS defaults to empty.
 """
+
 from __future__ import annotations
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
