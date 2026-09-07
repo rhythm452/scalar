@@ -36,7 +36,7 @@ Purpose: account owning hosted zones; single mocked credential per install plus 
 | id | TEXT | NOT NULL | uuid4 hex | PK | Internal user id |
 | username | TEXT | NOT NULL | — | UNIQUE | Login handle, lowercase |
 | email | TEXT | NOT NULL | — | UNIQUE | Contact email |
-| password_hash | TEXT | NOT NULL | — | — | bcrypt hash, never returned |
+| password_hash | TEXT | NOT NULL | — | — | argon2 hash, never returned |
 | aws_account_id | TEXT | NOT NULL | — | CHECK length 12, digits only | Mock 12-digit account id shown in TopNavigation |
 | display_name | TEXT | NULL | NULL | — | Shown in identity menu |
 | created_at | TEXT | NOT NULL | now | — | Row creation time |
@@ -203,7 +203,7 @@ Relationship table:
 
 ## 13. Seed data
 
-The idempotent seed script (`backend/app/seed/seed.py`) runs on backend boot when `SEED_ON_BOOT=true` and `users` is empty. It creates user `admin` / `password123` (bcrypt hash, email `admin@example.com`, account id `123456789012`), one public zone `example.com.` with comment `Seeded demo zone`, its auto NS/SOA system records, plus sample records `www.example.com. A 300 192.0.2.1`, `mail.example.com. MX 300 10 mail.example.com.`, and `_sip._tcp.example.com. SRV`. Re-running changes nothing: it checks username and zone name existence first.
+The idempotent seed script (`backend/app/seed/seed.py`) runs on backend boot when `SEED_ON_BOOT=true` and `users` is empty. It creates user `admin` / `password123` (argon2 hash, email `admin@example.com`, account id `123456789012`), one public zone `example.com.` with comment `Seeded demo zone`, its auto NS/SOA system records, plus sample records `www.example.com. A 300 192.0.2.1`, `mail.example.com. MX 300 10 mail.example.com.`, and `_sip._tcp.example.com. SRV`. Re-running changes nothing: it checks username and zone name existence first.
 
 ## 14. Complete DDL
 
