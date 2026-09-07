@@ -19,9 +19,13 @@ Standing rules for every future coding session on this repository.
 ## Quality gates
 
 1. CI must be green before a merge.
-2. Any behaviour change updates the relevant doc in the same commit.
-3. No `any` in TypeScript; no business logic in FastAPI routers.
-4. Follow the layer contracts in `docs/ARCHITECTURE.md`: routers → services → repositories → models.
+2. `make doctor` must pass locally before opening a phase branch's PR — it's the mechanical
+   superset of CI's checks (migrations round-trip, layering, pragma concurrency, coverage floor
+   with the greenlet config intact, seed idempotency, OpenAPI-vs-docs parity, secret scan,
+   frontend build) and it also runs in CI, but catching a failure locally first is cheaper.
+3. Any behaviour change updates the relevant doc in the same commit.
+4. No `any` in TypeScript; no business logic in FastAPI routers.
+5. Follow the layer contracts in `docs/ARCHITECTURE.md`: routers → services → repositories → models.
 
 ## Session start ritual
 

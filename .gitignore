@@ -35,6 +35,7 @@ coverage.xml
 *.db-shm
 *.sqlite
 *.sqlite3
+.doctor-scratch/
 
 # Env
 .env

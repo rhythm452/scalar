@@ -1,4 +1,4 @@
-.PHONY: dev dev-backend dev-frontend cf-dev cf-deploy fly-deploy test test-backend test-frontend lint lint-backend lint-frontend seed e2e e2e-update build install
+.PHONY: dev dev-backend dev-frontend cf-dev cf-deploy fly-deploy test test-backend test-frontend lint lint-backend lint-frontend seed e2e e2e-update build install doctor
 
 install:
 	pnpm --dir frontend install
@@ -55,3 +55,6 @@ e2e-update:
 
 build:
 	docker compose build
+
+doctor:
+	@bash scripts/doctor.sh
