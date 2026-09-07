@@ -118,6 +118,15 @@ class RecordService:
 
     # ---------------------------------------------------------------- reads
 
+    async def get_values_for(
+        self, db: AsyncSession, record_set_ids: list[str]
+    ) -> dict[str, list[str]]:
+        """Thin pass-through so routers reach values through the service
+        layer rather than importing the repository directly
+        (docs/ARCHITECTURE.md §2: routers may import services, not
+        repositories)."""
+        return await self._records.get_values_for(db, record_set_ids)
+
     async def get(
         self, db: AsyncSession, actor: User, zone_id: str, record_id: str
     ) -> ResourceRecordSet:
@@ -452,10 +461,25 @@ class RecordService:
     async def _apply_upsert(
         self, db: AsyncSession, zone: HostedZone, payload: RecordSetPayload, now: datetime
     ) -> ResourceRecordSet:
-        """UPSERT: replace when the natural key exists, else create."""
-        checked = await self._validate(db, zone, payload)
+        """UPSERT: replace when the natural key exists, else create.
+
+        Looks up the natural key directly rather than through
+        _validate()'s own duplicate check: that check unconditionally
+        raises on a match, which is correct for CREATE/UPDATE but would
+        make UPSERT reject every record it's meant to replace. If this
+        best-effort lookup misses (e.g. a name that fails to normalise),
+        this falls through to _apply_create(), which re-validates properly
+        and raises there instead -- never a silent duplicate write.
+        """
+        try:
+            name = normalise(payload.name, zone=zone.name)
+        except InvalidName:
+            name = payload.name
+        set_identifier = None
+        if payload.routing_policy != "simple":
+            set_identifier = (payload.set_identifier or "").strip() or None
         existing = await self._records.get_by_natural_key(
-            db, zone.id, checked.name, payload.type, checked.set_identifier
+            db, zone.id, name, payload.type, set_identifier
         )
         if existing is not None:
             return await self._apply_update(db, zone, existing, payload, now)
