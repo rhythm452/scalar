@@ -9,7 +9,6 @@ from fastapi import APIRouter, Query
 from app.core.deps import CurrentUser, DbSession, RecordServiceDep
 from app.core.errors import invalid_change_batch
 from app.models import ResourceRecordSet
-from app.repositories import record_repository
 from app.schemas.change import ChangeSummary
 from app.schemas.record import (
     BatchChangeItem,
@@ -49,8 +48,10 @@ def _to_payload(body: RecordSetWrite) -> RecordSetPayload:
     )
 
 
-async def _record_out(record: ResourceRecordSet, db: DbSession) -> RecordOut:
-    values_by_id = await record_repository.get_values_for(db, [record.id])
+async def _record_out(
+    record: ResourceRecordSet, db: DbSession, records: RecordServiceDep
+) -> RecordOut:
+    values_by_id = await records.get_values_for(db, [record.id])
     out = RecordOut.model_validate(record)
     return out.model_copy(update={"values": values_by_id.get(record.id, [])})
 
@@ -76,7 +77,7 @@ async def list_records(
         page_size=params.page_size,
         next_token=params.next_token,
     )
-    values_by_id = await record_repository.get_values_for(db, [r.id for r in rows])
+    values_by_id = await records.get_values_for(db, [r.id for r in rows])
     items = [
         RecordOut.model_validate(r).model_copy(update={"values": values_by_id.get(r.id, [])})
         for r in rows
@@ -94,7 +95,7 @@ async def create_record(
 ) -> RecordWriteResponse:
     record, change = await records.create(db, current_user, zone_id, _to_payload(body))
     return RecordWriteResponse(
-        record=await _record_out(record, db), change=ChangeSummary.model_validate(change)
+        record=await _record_out(record, db, records), change=ChangeSummary.model_validate(change)
     )
 
 
@@ -109,7 +110,7 @@ async def update_record(
 ) -> RecordWriteResponse:
     record, change = await records.update(db, current_user, zone_id, record_id, _to_payload(body))
     return RecordWriteResponse(
-        record=await _record_out(record, db), change=ChangeSummary.model_validate(change)
+        record=await _record_out(record, db, records), change=ChangeSummary.model_validate(change)
     )
 
 

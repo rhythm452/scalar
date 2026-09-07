@@ -7,8 +7,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.core.deps import CurrentUser, DbSession
-from app.repositories import hosted_zone_repository
+from app.core.deps import CurrentUser, DbSession, ZoneServiceDep
 from app.schemas.mocked import DashboardSummary, MockedListResponse
 
 router = APIRouter(tags=["mocked"])
@@ -25,6 +24,8 @@ async def list_traffic_policies(_current_user: CurrentUser) -> MockedListRespons
 
 
 @router.get("/dashboard/summary", response_model=DashboardSummary)
-async def dashboard_summary(db: DbSession, current_user: CurrentUser) -> DashboardSummary:
-    zone_count, record_count = await hosted_zone_repository.summary_for_owner(db, current_user.id)
+async def dashboard_summary(
+    db: DbSession, current_user: CurrentUser, zones: ZoneServiceDep
+) -> DashboardSummary:
+    zone_count, record_count = await zones.summary_for_owner(db, current_user)
     return DashboardSummary(zones=zone_count, records=record_count)

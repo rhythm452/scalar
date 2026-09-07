@@ -184,6 +184,13 @@ class HostedZoneService:
             await db.rollback()
             raise
 
+    async def summary_for_owner(self, db: AsyncSession, actor: User) -> tuple[int, int]:
+        """(zone_count, total_record_set_count) for the dashboard summary;
+        thin pass-through so the router reaches this through the service
+        layer rather than importing the repository directly
+        (docs/ARCHITECTURE.md §2)."""
+        return await self._zones.summary_for_owner(db, actor.id)
+
     async def delete(self, db: AsyncSession, actor: User, zone_id: str) -> None:
         """R3: reject while non-system records exist; tags are service-owned."""
         try:
