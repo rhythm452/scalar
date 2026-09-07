@@ -117,13 +117,24 @@ def _int_in_range(field: str, low: int, high: int) -> int | None:
 
 
 def _validate_mx(value: str) -> str:
+    """R7's table gives one message for every MX failure; unlike CNAME/NS/
+    PTR, a bad hostname here must not leak _hostname()'s own message (the
+    way SRV and NAPTR also normalise their embedded hostname failures)."""
+
+    def fail() -> Route53Error:
+        return invalid_change_batch('MX value must be in the format "<priority> <hostname>".')
+
     fields = _split_fields(value, 2)
     if not fields:
-        raise invalid_change_batch('MX value must be in the format "<priority> <hostname>".')
+        raise fail()
     preference = _int_in_range(fields[0], 0, U16_MAX)
     if preference is None:
-        raise invalid_change_batch('MX value must be in the format "<priority> <hostname>".')
-    return f"{preference} {_hostname(fields[1])}"
+        raise fail()
+    try:
+        hostname = normalise_hostname(fields[1])
+    except InvalidName:
+        raise fail() from None
+    return f"{preference} {hostname}"
 
 
 def _validate_srv(value: str) -> str:
