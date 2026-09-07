@@ -76,6 +76,18 @@ class HostedZoneRepository:
         await db.delete(zone)
         await db.flush()
 
+    async def summary_for_owner(self, db: AsyncSession, owner_id: str) -> tuple[int, int]:
+        """(zone_count, total_record_set_count) for the dashboard summary
+        (docs/API.md §7); record_set_count is denormalized on the zone, so
+        this is one aggregate query rather than a join through records."""
+        result = await db.execute(
+            select(func.count(), func.coalesce(func.sum(HostedZone.record_set_count), 0)).where(
+                HostedZone.owner_user_id == owner_id
+            )
+        )
+        zone_count, record_count = result.one()
+        return int(zone_count), int(record_count)
+
     async def search(
         self,
         db: AsyncSession,

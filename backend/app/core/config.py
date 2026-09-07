@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     session_expire_hours: int = 24
     seed_on_boot: bool = False
     log_level: str = "info"
+    # Off for local http development (docs/ARCHITECTURE.md §7); a Secure
+    # cookie is silently dropped by the browser over plain http, which
+    # otherwise makes login look broken with no visible error.
+    cookie_secure: bool = True
 
     @property
     def cors_origin_list(self) -> list[str]:

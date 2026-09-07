@@ -13,7 +13,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from alembic import command
 from alembic.config import Config
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -23,6 +22,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.pool import StaticPool
 
+from alembic import command
 from app.core.security import hash_password
 from app.models import User
 from app.repositories import (
