@@ -211,7 +211,7 @@ Re-running changes nothing: the guard is `COUNT(users) = 0`, and the whole datas
 
 ## 14. Complete DDL
 
-Verbatim DDL produced by the initial Alembic revision (`backend/alembic/versions/0001_initial_schema.py`); the test suite asserts `alembic upgrade head` output is byte-identical to `Base.metadata.create_all`:
+Verbatim DDL produced by the initial Alembic revision (`backend/alembic/versions/0001_initial_schema.py`); `backend/tests/unit/test_migration_parity.py` asserts `alembic upgrade head` produces the same tables, columns, types, nullability, indexes, and foreign keys as `Base.metadata.create_all` (structural equality over reflected metadata, not a byte-identical DDL string — SQLite's own DDL rendering isn't guaranteed stable enough for that to be a meaningful check):
 
 ```sql
 PRAGMA journal_mode=WAL;

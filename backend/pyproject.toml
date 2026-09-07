@@ -55,6 +55,17 @@ ignore_missing_imports = true
 testpaths = ["tests"]
 asyncio_mode = "auto"
 
+[tool.coverage.run]
+# SQLAlchemy's async ORM bridges to sync code via greenlet_spawn(); without
+# this, coverage silently under-reports every line that runs inside that
+# switch (which, for this codebase, is most of the service layer) with no
+# warning that the number is wrong.
+concurrency = ["greenlet", "thread"]
+source = ["app"]
+
+[tool.coverage.report]
+exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
