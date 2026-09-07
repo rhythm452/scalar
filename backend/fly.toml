@@ -1,0 +1,35 @@
+app = "scalar-api"
+primary_region = "bom"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  DATABASE_URL = "sqlite:////data/app.db"
+  SESSION_COOKIE_NAME = "r53_session"
+  SESSION_EXPIRE_HOURS = "24"
+  CORS_ORIGINS = ""
+  SEED_ON_BOOT = "true"
+  LOG_LEVEL = "info"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[mounts]]
+  source = "r53_data"
+  destination = "/data"
+
+[deploy]
+  release_command = "alembic upgrade head"
+
+[[services.http_checks]]
+  interval = "15s"
+  timeout = "5s"
+  grace_period = "10s"
+  method = "GET"
+  path = "/api/v1/health"
+  protocol = "http"

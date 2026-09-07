@@ -56,10 +56,13 @@ Thumbs.db
 !.vscode/extensions.json
 .idea/
 
-# Vercel / Fly
+# Vercel / Fly / Cloudflare
 .vercel
 .fly/
 fly.toml.local
+.open-next/
+.wrangler/
+.dev.vars
 
 # Logs
 *.log

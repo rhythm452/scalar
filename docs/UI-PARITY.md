@@ -30,6 +30,7 @@ For every Route 53 UI element, the exact Cloudscape component that reproduces it
 | Confirm dialogs | Modal | Delete zone, delete record, bulk delete, unsaved changes |
 | Notifications | Flashbar | Every mutation; dismissible; auto-dismiss success after 8 s |
 | Inline errors | Alert | Segment error boundaries + form-level API errors |
+| Demo credentials alert | Alert type="info" | Intentional deviation from real AWS sign-in (ADR-015) |
 | Detail tabs | Tabs | Records / Hosted zone details / Tags on zone detail |
 | Status pills | StatusIndicator + Badge | PENDING (in-progress) vs INSYNC (success) change badges |
 | Links | Link + Box | Cross-links between dashboard, lists, detail |
@@ -45,6 +46,8 @@ For every Route 53 UI element, the exact Cloudscape component that reproduces it
 ### /login (mock AWS sign-in)
 
 Route `/login`. Title `Sign in`. Breadcrumb: none (standalone). Header: AWS-style centered Container with `Sign in` Header. Fields: `Username`, `Password` (type password). Action: primary Button `Sign in`, loading state `Signing in…`. Empty state: none. Loading: button spinner only. Errors: Alert `Invalid username or password.` on 401. On success redirect to `?next=` or `/route53`.
+
+Demo-credentials note: directly under the header, render a Cloudscape `Alert` with `type="info"`, header `Demo credentials`, body `Username: admin / Password: password123`. This is an intentional, documented deviation from a real AWS sign-in page to remove login friction for judges (ADR-015).
 
 ### /route53 dashboard
 
@@ -101,10 +104,12 @@ Keyboard navigation across nav, tables (arrow + space selection), modals (focus 
 
 ## 7. Needs verification against screenshots
 
-The following could not be verified without live console captures and must be checked once reference images land in `docs/screenshots/`:
+The following items are unverified and will be reconciled against reference captures before Phase 4 begins:
 
 1. Exact casing of `Description - optional` vs `Description - optional` with em-dash.
 2. Whether the records filter placeholder reads `Filter records by property or value` verbatim including the leading verb.
 3. Exact wizard step titles for record creation (drafted as Details/Values/Routing/Review).
 4. Exact wording of the empty-zone body beyond `You don't have any hosted zones.`
 5. Whether zone detail tabs read `Hosted zone details` vs `Details`.
+
+The reference screenshots have not yet been supplied. Once they land in `docs/screenshots/`, update this section and any mismatched copy in the implementation.

@@ -17,6 +17,8 @@ services:
       timeout: 5s
       retries: 5
 
+  # Frontend via plain `next dev` for fast local iteration. Use `pnpm --dir frontend preview`
+  # (wrangler dev) when testing the real Cloudflare Worker proxy path end-to-end.
   frontend:
     build:
       context: ./frontend
@@ -24,7 +26,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+      API_ORIGIN: http://localhost:8000
     depends_on:
       backend:
         condition: service_healthy
