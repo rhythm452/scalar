@@ -150,15 +150,18 @@ class RecordRepository:
 
         conditions: list[ColumnElement[bool]] = [ResourceRecordSet.hosted_zone_id == zone_id]
         if search:
+            # EXISTS over a non-aggregate select: EXISTS(SELECT count(*) ...)
+            # is always true (an aggregate always returns exactly one row,
+            # even count=0), which silently made this match every record.
             value_match = (
-                select(func.count())
-                .select_from(ResourceRecordValue)
+                select(ResourceRecordValue.id)
                 .where(
                     ResourceRecordValue.record_set_id == ResourceRecordSet.id,
                     ResourceRecordValue.value.like(f"%{search}%"),
                 )
+                .exists()
             )
-            conditions.append(ResourceRecordSet.name.like(f"%{search}%") | value_match.exists())
+            conditions.append(ResourceRecordSet.name.like(f"%{search}%") | value_match)
         if record_type is not None:
             conditions.append(ResourceRecordSet.type == record_type)
         if routing_policy is not None:
