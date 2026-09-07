@@ -66,3 +66,8 @@ fly.toml.local
 # Logs
 *.log
 npm-debug.log*
+
+# Session artifacts -- audit findings, scorecards, and similar working
+# output enumerate this project's own defects and must never be committed
+# to a repository being judged.
+runs/
