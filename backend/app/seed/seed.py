@@ -297,6 +297,12 @@ async def run_seed(db: AsyncSession) -> bool:
         updated_at=started,
     )
     db.add(admin)
+    # Flushed explicitly at each FK boundary below: without a declared ORM
+    # relationship(), SQLAlchemy's flush orders INSERTs by mapper
+    # registration order (app/models/__init__.py import order), not by
+    # db.add() call order or schema-declared FKs, so a parent row must be
+    # flushed before any child row referencing it is added.
+    await db.flush()
 
     for index, spec in enumerate(ZONES):
         count = 2 + len(demo) if spec["id"] == DEMO_ZONE_ID else 2
@@ -314,6 +320,7 @@ async def run_seed(db: AsyncSession) -> bool:
             updated_at=started + timedelta(days=index),
         )
         db.add(zone)
+        await db.flush()
         for record_type, ttl, values in (
             ("NS", R1_NS_TTL, list(R1_NS_TARGETS)),
             ("SOA", R1_SOA_TTL, [R1_SOA_VALUE]),
@@ -331,6 +338,7 @@ async def run_seed(db: AsyncSession) -> bool:
                 updated_at=zone.created_at,
             )
             db.add(system)
+            await db.flush()
             for order, value in enumerate(values):
                 db.add(ResourceRecordValue(record_set_id=system.id, value=value, sort_order=order))
 
@@ -338,6 +346,7 @@ async def run_seed(db: AsyncSession) -> bool:
         record.created_at = demo_when
         record.updated_at = demo_when
         db.add(record)
+        await db.flush()
         for order, value in enumerate(values):
             db.add(ResourceRecordValue(record_set_id=record.id, value=value, sort_order=order))
 
@@ -367,6 +376,7 @@ async def run_seed(db: AsyncSession) -> bool:
             comment=comment,
         )
         db.add(batch)
+        await db.flush()
         for action, record in items:
             db.add(
                 ChangeBatchItem(
@@ -395,3 +405,72 @@ def _record_snapshot(record: ResourceRecordSet) -> str:
             "is_system": record.is_system,
         }
     )
+
+
+async def _print_counts(db: AsyncSession) -> None:
+    """Report real row counts after seeding, grouped the way a reviewer
+    would sanity-check the dataset (docs/DATABASE.md §13)."""
+    from sqlalchemy import func, select
+
+    zones = int((await db.execute(select(func.count()).select_from(HostedZone))).scalar_one())
+    records = int(
+        (await db.execute(select(func.count()).select_from(ResourceRecordSet))).scalar_one()
+    )
+    tagged_zones = int(
+        (
+            await db.execute(
+                select(func.count(func.distinct(Tag.resource_id))).where(
+                    Tag.resource_type == "hostedzone"
+                )
+            )
+        ).scalar_one()
+    )
+    changes = int((await db.execute(select(func.count()).select_from(ChangeBatch))).scalar_one())
+    non_simple = int(
+        (
+            await db.execute(
+                select(func.count())
+                .select_from(ResourceRecordSet)
+                .where(ResourceRecordSet.routing_policy != "simple")
+            )
+        ).scalar_one()
+    )
+    multivalue_sets = int(
+        (
+            await db.execute(
+                select(func.count(func.distinct(ResourceRecordSet.name))).where(
+                    ResourceRecordSet.routing_policy == "multivalue"
+                )
+            )
+        ).scalar_one()
+    )
+    by_type = (
+        await db.execute(
+            select(ResourceRecordSet.type, func.count())
+            .group_by(ResourceRecordSet.type)
+            .order_by(ResourceRecordSet.type)
+        )
+    ).all()
+
+    print(f"zones: {zones}")
+    print(f"records: {records}")
+    print(f"tagged_zones: {tagged_zones}")
+    print(f"change_batches: {changes}")
+    print(f"non_simple_routing_records: {non_simple}")
+    print(f"multivalue_record_names: {multivalue_sets}")
+    print("records_by_type: " + ", ".join(f"{t}={c}" for t, c in by_type))
+
+
+async def _main() -> None:
+    from app.db.session import session_factory
+
+    async with session_factory() as db:
+        wrote = await run_seed(db)
+        print("seed: wrote new data" if wrote else "seed: users table already populated, no-op")
+        await _print_counts(db)
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    asyncio.run(_main())
