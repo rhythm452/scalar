@@ -34,7 +34,7 @@ test-frontend:
 lint: lint-backend lint-frontend
 
 lint-backend:
-	uv run --project backend ruff check backend && uv run --project backend ruff format --check backend && uv run --project backend mypy backend/app
+	uv run --project backend ruff check backend && uv run --project backend ruff format --check backend && uv run --project backend mypy --config-file backend/pyproject.toml backend/app
 
 lint-frontend:
 	pnpm --dir frontend lint

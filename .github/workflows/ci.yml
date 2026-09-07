@@ -17,7 +17,7 @@ jobs:
       - run: uv sync --project backend
       - run: uv run --project backend ruff check backend
       - run: uv run --project backend ruff format --check backend
-      - run: uv run --project backend mypy backend/app
+      - run: uv run --project backend mypy --config-file backend/pyproject.toml backend/app
       - run: uv run --project backend pytest backend/tests -q --cov=backend/app --cov-report=xml
 
   frontend:
