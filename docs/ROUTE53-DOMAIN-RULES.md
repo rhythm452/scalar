@@ -61,7 +61,7 @@ Enforced in: `RecordService.create` and `RecordService.update`.
 
 Description: Record names normalize to lowercase fully-qualified names with a trailing dot and must be within the zone's domain. Bare `@` maps to the apex; relative names get the zone suffix appended.
 
-Trigger condition: any record create/update. Normalization steps: trim, lowercase, convert `@` to zone name, append `.zone-name.` if no dot, append trailing dot if missing. Then verify `name == zone OR name endswith .zone`.
+Trigger condition: any record create/update. Normalization steps: trim, lowercase, convert `@` to zone name, then any name that does not end with a dot is relative and gets `.zone-name.` appended (so both `www` and `_sip._tcp` become `www.example.com.` and `_sip._tcp.example.com.` inside `example.com.`), names ending with a dot are absolute. Then verify `name == zone OR name endswith .zone`.
 
 Error: HTTP 400, code `InvalidChangeBatch`, message `RRSet with DNS name X. is not permitted in zone Y.` where `X.` is the submitted normalized name and `Y.` the zone name.
 
