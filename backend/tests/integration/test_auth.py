@@ -55,3 +55,11 @@ async def test_protected_endpoint_401_without_cookie(client: AsyncClient) -> Non
     response = await client.get("/api/v1/hostedzones")
     assert response.status_code == 401
     assert response.json()["Error"]["Code"] == "NotAuthorized"
+
+
+async def test_health_requires_no_auth_and_matches_documented_shape(client: AsyncClient) -> None:
+    """docs/API.md §8: `{ok: true, version: "0.1.0"}`, used by Docker/Fly/CI healthchecks --
+    those all parse JSON strictly, so `ok` must be the boolean `true`, not the string `"true"`."""
+    response = await client.get("/api/v1/health")
+    assert response.status_code == 200
+    assert response.json() == {"ok": True, "version": "0.1.0"}
