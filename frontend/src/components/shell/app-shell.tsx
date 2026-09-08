@@ -16,6 +16,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { buildThemeMenuGroup, handleThemeMenuItemClick } from "@/components/shell/theme-toggle";
 import { BreadcrumbsProvider, useBreadcrumbsValue } from "@/components/shell/breadcrumbs-context";
 import { FlashbarProvider, useFlashbar } from "@/components/shell/flashbar-context";
+import { NotificationsPanel } from "@/components/shell/notifications-panel";
 import { SplitPanelProvider, useSplitPanelValue } from "@/components/shell/split-panel-context";
 import { ConsoleFooter } from "@/components/shell/console-footer";
 import { SideNavFooterLinks } from "@/components/shell/side-nav-footer-links";
@@ -111,7 +112,8 @@ function AppShellContent({ children }: { children: ReactNode }) {
   const logout = useLogout();
   const theme = useTheme();
   const breadcrumbItems = useBreadcrumbsValue();
-  const { items: flashItems } = useFlashbar();
+  const { items: flashItems, unreadCount, markNotificationsSeen } = useFlashbar();
+  const [activeDrawerId, setActiveDrawerId] = useState<string | null>(null);
   const splitPanel = useSplitPanelValue();
   const [splitPanelPreferences, setSplitPanelPreferences] = useState<{ position: "side" | "bottom" }>({
     position: "side",
@@ -170,10 +172,16 @@ function AppShellContent({ children }: { children: ReactNode }) {
             {
               type: "button",
               iconName: "notification",
-              ariaLabel: "Notifications",
-              // No persisted notification history exists yet -- static, unread-free
-              // for now (UI-PARITY chrome-parity pass explicitly allows this stub).
-              badge: false,
+              ariaLabel:
+                unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications",
+              // TopNavigation's utility badge is boolean-only (a dot, no count) --
+              // the unread count travels in the aria label and the panel itself
+              // rather than a custom badge overlay.
+              badge: unreadCount > 0,
+              onClick: () => {
+                markNotificationsSeen();
+                setActiveDrawerId("notifications");
+              },
             },
             {
               type: "button",
@@ -222,6 +230,16 @@ function AppShellContent({ children }: { children: ReactNode }) {
           />
         }
         notifications={flashItems.length > 0 ? <Flashbar items={flashItems} /> : undefined}
+        drawers={[
+          {
+            id: "notifications",
+            content: <NotificationsPanel />,
+            ariaLabels: { drawerName: "Notifications", closeButton: "Close notifications panel" },
+            badge: unreadCount > 0,
+          },
+        ]}
+        activeDrawerId={activeDrawerId}
+        onDrawerChange={({ detail }) => setActiveDrawerId(detail.activeDrawerId)}
         content={children}
         splitPanel={
           splitPanel.panel ? (
