@@ -26,4 +26,10 @@ describe("DashboardPageClient", () => {
     expect(screen.getByText("Info")).toBeInTheDocument();
     expect(await screen.findByText("DNS management")).toBeInTheDocument();
   });
+
+  it("renders the register-domain and notifications sections", async () => {
+    renderDashboard();
+    expect(await screen.findByText("Register domain")).toBeInTheDocument();
+    expect(screen.getByText("Notifications")).toBeInTheDocument();
+  });
 });

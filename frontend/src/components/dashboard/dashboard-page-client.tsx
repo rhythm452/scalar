@@ -7,6 +7,8 @@ import SpaceBetween from "@cloudscape-design/components/space-between";
 import { useSummary } from "@/hooks/use-summary";
 import { useSetBreadcrumbs } from "@/components/shell/breadcrumbs-context";
 import { DashboardActionCards } from "@/components/dashboard/dashboard-action-cards";
+import { DashboardRegisterDomain } from "@/components/dashboard/dashboard-register-domain";
+import { DashboardNotifications } from "@/components/dashboard/dashboard-notifications";
 
 // The real console's "Info" link opens a HelpPanel in AppLayout's tools slot, but
 // this app's shell renders `toolsHide` everywhere (no HelpPanel exists anywhere in
@@ -39,6 +41,8 @@ export function DashboardPageClient() {
     >
       <SpaceBetween size="l">
         <DashboardActionCards summary={summary} isLoading={isLoading} />
+        <DashboardRegisterDomain />
+        <DashboardNotifications />
       </SpaceBetween>
     </ContentLayout>
   );
