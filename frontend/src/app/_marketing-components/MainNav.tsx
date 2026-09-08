@@ -31,9 +31,9 @@ export function MainNav() {
           <button aria-label="Search" className="rounded p-2 text-text hover:bg-gray-100">
             <Search className="h-4 w-4" />
           </button>
-          <a href="#" className="text-sm font-medium text-text hover:text-navy">
+          <Link href="/login" className="text-sm font-medium text-text hover:text-navy">
             Sign in to console
-          </a>
+          </Link>
           <button className="rounded bg-navy px-4 py-2 text-sm font-medium text-white hover:bg-navy-soft">
             Create account
           </button>
@@ -55,9 +55,9 @@ export function MainNav() {
               {item}
             </a>
           ))}
-          <a href="#" className="hover:text-navy">
+          <Link href="/login" className="hover:text-navy">
             Sign in to console
-          </a>
+          </Link>
           <button className="mt-2 w-full rounded bg-navy px-4 py-2 text-center text-white">
             Create account
           </button>

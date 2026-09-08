@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { SubNav } from "./SubNav";
 
 export function Hero() {
@@ -28,9 +29,12 @@ export function Hero() {
         </p>
 
         <div className="mt-8 flex flex-wrap gap-4">
-          <button className="rounded bg-navy px-6 py-3 text-sm font-semibold text-white hover:bg-navy-soft">
+          <Link
+            href="/login"
+            className="rounded bg-navy px-6 py-3 text-sm font-semibold text-white hover:bg-navy-soft"
+          >
             Get started with Route 53
-          </button>
+          </Link>
           <button className="rounded border border-navy px-6 py-3 text-sm font-semibold text-navy hover:bg-white">
             Connect with an expert
           </button>
