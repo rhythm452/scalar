@@ -9,6 +9,8 @@ import { useSetBreadcrumbs } from "@/components/shell/breadcrumbs-context";
 import { DashboardActionCards } from "@/components/dashboard/dashboard-action-cards";
 import { DashboardRegisterDomain } from "@/components/dashboard/dashboard-register-domain";
 import { DashboardNotifications } from "@/components/dashboard/dashboard-notifications";
+import { DashboardMoreResources } from "@/components/dashboard/dashboard-more-resources";
+import { DashboardServiceHealth } from "@/components/dashboard/dashboard-service-health";
 
 // The real console's "Info" link opens a HelpPanel in AppLayout's tools slot, but
 // this app's shell renders `toolsHide` everywhere (no HelpPanel exists anywhere in
@@ -43,6 +45,8 @@ export function DashboardPageClient() {
         <DashboardActionCards summary={summary} isLoading={isLoading} />
         <DashboardRegisterDomain />
         <DashboardNotifications />
+        <DashboardMoreResources />
+        <DashboardServiceHealth />
       </SpaceBetween>
     </ContentLayout>
   );

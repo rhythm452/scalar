@@ -32,4 +32,10 @@ describe("DashboardPageClient", () => {
     expect(await screen.findByText("Register domain")).toBeInTheDocument();
     expect(screen.getByText("Notifications")).toBeInTheDocument();
   });
+
+  it("renders the more-resources and service-health sections", async () => {
+    renderDashboard();
+    expect(await screen.findByText("More resources")).toBeInTheDocument();
+    expect(screen.getByText("Service health")).toBeInTheDocument();
+  });
 });
