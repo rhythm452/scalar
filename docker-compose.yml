@@ -5,7 +5,6 @@ services:
       - "8000:8000"
     environment:
       DATABASE_URL: sqlite:////data/app.db
-      CORS_ORIGINS: http://localhost:3000
       SEED_ON_BOOT: "true"
       SESSION_COOKIE_NAME: r53_session
       SESSION_EXPIRE_HOURS: "24"

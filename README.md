@@ -4,7 +4,13 @@ A pixel-faithful, full-stack clone of the AWS Route 53 console: hosted zones, re
 
 Repository: [github.com/rhythm452/scalar](https://github.com/rhythm452/scalar)
 
-> Not yet deployed — see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) (planned for Phase 9).
+## Live demo
+
+- **App**: https://frontend-tau-olive-54.vercel.app
+- **API**: https://scalar-api.fly.dev
+- **Login**: `admin` / `password123`
+
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for how this is deployed (Next.js on Vercel, FastAPI on Fly.io, single-origin proxy).
 
 ## Table of contents
 
