@@ -31,7 +31,7 @@ export function Hero() {
         <div className="mt-8 flex flex-wrap gap-4">
           <Link
             href="/login"
-            className="rounded bg-navy px-6 py-3 text-sm font-semibold text-white hover:bg-navy-soft"
+            className="hero-cta rounded px-6 py-3 text-sm font-semibold text-white"
           >
             Get started with Route 53
           </Link>

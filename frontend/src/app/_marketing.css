@@ -64,3 +64,17 @@
 .marketing-fade {
   animation: marketing-fade 500ms ease both;
 }
+
+/* @cloudscape-design/global-styles (imported app-wide in layout.tsx) ships an
+   unlayered `a { background-color: transparent }` reset. Unlayered CSS always
+   wins over Tailwind's layered utilities regardless of specificity, so
+   `bg-navy` on an <a> (e.g. a next/link CTA) silently renders transparent.
+   This class-selector override -- also unlayered, but with higher specificity
+   than a bare tag selector -- restores the intended background. */
+.hero-cta {
+  background-color: var(--color-navy);
+}
+
+.hero-cta:hover {
+  background-color: var(--color-navy-soft);
+}
