@@ -3,7 +3,7 @@
 The lifespan wires the documented boot behaviour (docs/DATABASE.md §13):
 when ``SEED_ON_BOOT=true`` and the ``users`` table is empty, the idempotent
 seed populates the demo dataset. Migrations are NOT run here; they run as
-the Docker CMD / Fly release command.
+part of the Docker CMD before uvicorn starts.
 """
 
 from __future__ import annotations
