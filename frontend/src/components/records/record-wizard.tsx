@@ -68,6 +68,13 @@ export function RecordWizard({
         addFlash({
           type: "success",
           content: `Record created: ${previewRecordName(values.subdomain, zoneName)} ${values.type} (Change ${response.change.id}, status ${response.change.status}).`,
+          activity: {
+            action: "Created",
+            resourceType: "Record",
+            resourceName: `${previewRecordName(values.subdomain, zoneName)} ${values.type}`,
+            changeId: response.change.id,
+            changeStatus: response.change.status,
+          },
         });
         router.push(`/route53/hostedzones/${zoneId}?tab=records`);
       },
@@ -76,6 +83,17 @@ export function RecordWizard({
           setSubmitError("Something went wrong. Please try again.");
           return;
         }
+        // The step-routing mapping below stays untouched; this single
+        // announcement also toasts the failure and logs the error entry.
+        addFlash({
+          type: "error",
+          content: `Record not created: ${previewRecordName(values.subdomain, zoneName)} (${error.code}).`,
+          activity: {
+            action: "Created",
+            resourceType: "Record",
+            resourceName: `${previewRecordName(values.subdomain, zoneName)} ${values.type}`,
+          },
+        });
         const field = mapRecordErrorToField(error);
         if (field) {
           setError(field, { message: error.message });

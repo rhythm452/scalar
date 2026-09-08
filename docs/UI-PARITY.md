@@ -28,9 +28,10 @@ For every Route 53 UI element, the exact Cloudscape component that reproduces it
 | Forms | Form + FormField + Input + Select + Multiselect + RadioGroup + Textarea | Zone create, record quick/wizard forms |
 | Buttons | Button + ButtonDropdown | Bulk delete via ButtonDropdown on record table |
 | Confirm dialogs | Modal | Delete zone, delete record, bulk delete, unsaved changes |
-| Notifications | Flashbar | Every mutation; dismissible; auto-dismiss success after 8 s |
+| Notifications | Flashbar | Every mutation; dismissible; auto-dismiss success after 8 s. Every toast with activity metadata also appends a session-scoped entry (ADR-021) |
 | Inline errors | Alert | Segment error boundaries + form-level API errors |
 | Demo credentials alert | Alert type="info" | Intentional deviation from real AWS sign-in (ADR-015) |
+| Activity feed (bell drawer) | AppLayout drawers slot | Intentional improvement over the real console: the empty reference shows nothing, while this panel lists the session's own zone/record actions with change ID/status. In-memory only, capped at 50, clears on reload |
 | Detail tabs | Tabs | Records / Hosted zone details / Tags on zone detail |
 | Status pills | StatusIndicator + Badge | PENDING (in-progress) vs INSYNC (success) change badges |
 | Links | Link + Box | Cross-links between dashboard, lists, detail |

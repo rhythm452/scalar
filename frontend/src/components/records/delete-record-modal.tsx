@@ -36,6 +36,13 @@ export function DeleteRecordModal({
         addFlash({
           type: "success",
           content: `Record deleted: ${record.name} ${record.type} (Change ${response.change.id}, status ${response.change.status}).`,
+          activity: {
+            action: "Deleted",
+            resourceType: "Record",
+            resourceName: `${record.name} ${record.type}`,
+            changeId: response.change.id,
+            changeStatus: response.change.status,
+          },
         });
         close();
       },

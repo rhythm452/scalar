@@ -59,6 +59,13 @@ export function RecordEditForm({
         addFlash({
           type: "success",
           content: `Record updated: ${response.record.name} ${response.record.type} (Change ${response.change.id}, status ${response.change.status}).`,
+          activity: {
+            action: "Updated",
+            resourceType: "Record",
+            resourceName: `${response.record.name} ${response.record.type}`,
+            changeId: response.change.id,
+            changeStatus: response.change.status,
+          },
         });
         backToRecords();
       },
@@ -67,6 +74,17 @@ export function RecordEditForm({
           setError("root", { message: "Something went wrong. Please try again." });
           return;
         }
+        // The field mapping below stays untouched; this single announcement also
+        // toasts the failure and logs the error entry.
+        addFlash({
+          type: "error",
+          content: `Record not updated: ${record.name} (${error.code}).`,
+          activity: {
+            action: "Updated",
+            resourceType: "Record",
+            resourceName: `${record.name} ${record.type}`,
+          },
+        });
         const field = mapRecordErrorToField(error);
         setError(field ?? "root", { message: error.message });
       },

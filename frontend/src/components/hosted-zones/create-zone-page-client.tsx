@@ -62,7 +62,15 @@ export function CreateZonePageClient() {
       },
       {
         onSuccess: (response) => {
-          addFlash({ type: "success", content: `Hosted zone created: ${response.zone.name}` });
+          addFlash({
+            type: "success",
+            content: `Hosted zone created: ${response.zone.name}`,
+            activity: {
+              action: "Created",
+              resourceType: "Hosted zone",
+              resourceName: response.zone.name,
+            },
+          });
           router.push(`/route53/hostedzones/${response.zone.id}`);
         },
         onError: (error) => {

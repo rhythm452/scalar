@@ -303,3 +303,15 @@ connected in the Vercel dashboard) replaces the CI-driven preview/deploy
 entirely -- no workflow YAML builds or ships the frontend anymore, Vercel's
 platform does. `docs/ARCHITECTURE.md` §9 and `docs/DEPLOYMENT.md` §2 are
 rewritten to describe this path.
+
+## 21. ADR-021 Notification panel subscribes to the flashbar context (single event source)
+
+Context: the top-nav bell needed a session activity feed (zone/record creates,
+edits, deletes with change ID/status), but the Flashbar context from Phase 3 was
+already the one place where a mutation announces an outcome.
+
+Decision: extend that context instead of adding a second one. `addFlash`
+accepts optional structured `activity` metadata and appends a capped (50),
+in-memory entry in the same call that raises the toast, deriving the outcome
+from the flash type. Mutation handlers still make exactly one call; the panel
+and the bell badge are subscribers, never sources.

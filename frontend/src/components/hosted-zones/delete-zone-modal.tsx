@@ -33,7 +33,11 @@ export function DeleteZoneModal({
   const confirm = () => {
     deleteZone.mutate(undefined, {
       onSuccess: () => {
-        addFlash({ type: "success", content: "Hosted zone deleted." });
+        addFlash({
+          type: "success",
+          content: "Hosted zone deleted.",
+          activity: { action: "Deleted", resourceType: "Hosted zone", resourceName: zoneName },
+        });
         router.push("/route53/hostedzones");
       },
     });
