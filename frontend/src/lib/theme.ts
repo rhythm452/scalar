@@ -17,26 +17,26 @@ function writeCookie(name: string, value: string): void {
 }
 
 export function getStoredMode(): ThemeModeValue {
-  const stored = readCookie(THEME_MODE_COOKIE_NAME) ?? localStorage.getItem(THEME_MODE_COOKIE_NAME);
+  const stored = readCookie(THEME_MODE_COOKIE_NAME) ?? window.localStorage.getItem(THEME_MODE_COOKIE_NAME);
   return stored === "dark" ? "dark" : "light";
 }
 
 export function getStoredDensity(): ThemeDensityValue {
   const stored =
-    readCookie(THEME_DENSITY_COOKIE_NAME) ?? localStorage.getItem(THEME_DENSITY_COOKIE_NAME);
+    readCookie(THEME_DENSITY_COOKIE_NAME) ?? window.localStorage.getItem(THEME_DENSITY_COOKIE_NAME);
   return stored === "compact" ? "compact" : "comfortable";
 }
 
 export function setStoredMode(mode: ThemeModeValue): void {
   applyMode(mode === "dark" ? Mode.Dark : Mode.Light);
   writeCookie(THEME_MODE_COOKIE_NAME, mode);
-  localStorage.setItem(THEME_MODE_COOKIE_NAME, mode);
+  window.localStorage.setItem(THEME_MODE_COOKIE_NAME, mode);
 }
 
 export function setStoredDensity(density: ThemeDensityValue): void {
   applyDensity(density === "compact" ? Density.Compact : Density.Comfortable);
   writeCookie(THEME_DENSITY_COOKIE_NAME, density);
-  localStorage.setItem(THEME_DENSITY_COOKIE_NAME, density);
+  window.localStorage.setItem(THEME_DENSITY_COOKIE_NAME, density);
 }
 
 // Runs synchronously as the first child of <body>, before hydration, to avoid a
@@ -52,8 +52,8 @@ export const THEME_INIT_SCRIPT = `(function () {
       if (idx > -1) acc[part.slice(0, idx)] = decodeURIComponent(part.slice(idx + 1));
       return acc;
     }, {});
-    var mode = cookies["${THEME_MODE_COOKIE_NAME}"] || window.localStorage.getItem("${THEME_MODE_COOKIE_NAME}");
-    var density = cookies["${THEME_DENSITY_COOKIE_NAME}"] || window.localStorage.getItem("${THEME_DENSITY_COOKIE_NAME}");
+    var mode = cookies["${THEME_MODE_COOKIE_NAME}"] || window.window.localStorage.getItem("${THEME_MODE_COOKIE_NAME}");
+    var density = cookies["${THEME_DENSITY_COOKIE_NAME}"] || window.window.localStorage.getItem("${THEME_DENSITY_COOKIE_NAME}");
     if (mode === "dark") document.body.classList.add("awsui-dark-mode");
     if (density === "compact") document.body.classList.add("awsui-compact-mode");
   } catch (e) {}
