@@ -72,3 +72,4 @@ npm-debug.log*
 # output enumerate this project's own defects and must never be committed
 # to a repository being judged.
 runs/
+ref/
