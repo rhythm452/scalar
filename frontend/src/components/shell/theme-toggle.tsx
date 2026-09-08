@@ -1,19 +1,20 @@
-import type { TopNavigationProps } from "@cloudscape-design/components/top-navigation";
+import type { ButtonDropdownProps } from "@cloudscape-design/components/button-dropdown";
 import type { UseThemeResult } from "@/hooks/use-theme";
 
-const MODE_LIGHT = "mode-light";
-const MODE_DARK = "mode-dark";
-const DENSITY_COMFORTABLE = "density-comfortable";
-const DENSITY_COMPACT = "density-compact";
+export const MODE_LIGHT = "mode-light";
+export const MODE_DARK = "mode-dark";
+export const DENSITY_COMFORTABLE = "density-comfortable";
+export const DENSITY_COMPACT = "density-compact";
 
-// Dark/light + density only this phase; visual-refresh is a Phase 7 deliverable
-// per docs/ROADMAP.md even though docs/UI-PARITY.md §5 describes them together.
-export function buildThemeUtility(theme: UseThemeResult): TopNavigationProps.MenuDropdownUtility {
+const THEME_ITEM_IDS = new Set([MODE_LIGHT, MODE_DARK, DENSITY_COMFORTABLE, DENSITY_COMPACT]);
+
+// The real console has no persistent top-level "Theme" nav item -- dark mode lives
+// inside the account/settings menu. This builds a nested group for the identity
+// utility's dropdown (`TopNavigation.utilities[].items`) instead of its own utility.
+export function buildThemeMenuGroup(theme: UseThemeResult): ButtonDropdownProps.ItemGroup {
   return {
-    type: "menu-dropdown",
+    id: "theme",
     text: "Theme",
-    ariaLabel: "Theme settings",
-    iconName: "settings",
     items: [
       { id: MODE_LIGHT, text: "Light", itemType: "checkbox", checked: theme.mode === "light" },
       { id: MODE_DARK, text: "Dark", itemType: "checkbox", checked: theme.mode === "dark" },
@@ -30,21 +31,26 @@ export function buildThemeUtility(theme: UseThemeResult): TopNavigationProps.Men
         checked: theme.density === "compact",
       },
     ],
-    onItemClick: ({ detail }) => {
-      switch (detail.id) {
-        case MODE_LIGHT:
-          theme.setMode("light");
-          break;
-        case MODE_DARK:
-          theme.setMode("dark");
-          break;
-        case DENSITY_COMFORTABLE:
-          theme.setDensity("comfortable");
-          break;
-        case DENSITY_COMPACT:
-          theme.setDensity("compact");
-          break;
-      }
-    },
   };
+}
+
+// Returns true when it handled the click (a theme item), false otherwise -- lets the
+// caller's onItemClick fall through to its own ids (e.g. "sign-out") unmodified.
+export function handleThemeMenuItemClick(theme: UseThemeResult, id: string): boolean {
+  if (!THEME_ITEM_IDS.has(id)) return false;
+  switch (id) {
+    case MODE_LIGHT:
+      theme.setMode("light");
+      break;
+    case MODE_DARK:
+      theme.setMode("dark");
+      break;
+    case DENSITY_COMFORTABLE:
+      theme.setDensity("comfortable");
+      break;
+    case DENSITY_COMPACT:
+      theme.setDensity("compact");
+      break;
+  }
+  return true;
 }

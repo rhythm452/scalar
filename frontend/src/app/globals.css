@@ -23,3 +23,34 @@ body.awsui-dark-mode {
   background-color: #0f1b2a;
   color: #d1d5db;
 }
+
+/* Cloudscape's primary-button token is blue by design-system decree -- there is no
+   semantic "AWS classic orange" token to opt into (checked @cloudscape-design/design-
+   tokens: colorBackgroundButtonPrimary* only ever resolves to the blue scale). The
+   real Route 53 console's primary CTA is AWS's classic orange, so this is a scoped
+   override of the button's own CSS custom properties (docs/UI-PARITY.md primary CTA),
+   applied only where UI-PARITY calls for it -- not a global theme change. */
+.r53-primary-cta [class*="button"][class*="variant-primary"] {
+  --color-background-button-primary-default-emr769: #ec7211;
+  --color-background-button-primary-hover-979qcq: #eb5f07;
+  --color-background-button-primary-active-mulwvt: #c05601;
+  --color-border-button-primary-default-f7dp5z: #ec7211;
+  --color-border-button-primary-hover-38r9qu: #eb5f07;
+  --color-border-button-primary-active-lupau4: #c05601;
+  --color-text-button-primary-default-2i01k6: #ffffff;
+  --color-text-button-primary-hover-xtd6ag: #ffffff;
+  --color-text-button-primary-active-dkwkja: #ffffff;
+}
+
+/* Console footer + side-nav pinned row: dark navy chrome matching TopNavigation's own
+   dark background. Cloudscape ships this exact shade as a documented context class
+   for non-TopNavigation elements that need the same dark chrome treatment. */
+.r53-console-footer {
+  background-color: #0f1b2a;
+  color: #d1d5db;
+}
+
+.r53-console-footer a {
+  color: #d1d5db;
+}
+

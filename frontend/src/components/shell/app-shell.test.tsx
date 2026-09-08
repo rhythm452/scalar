@@ -29,15 +29,18 @@ describe("AppShell", () => {
     );
     renderShell();
 
-    for (const label of [
-      "Hosted zones",
-      "Health checks",
-      "Traffic policies",
-      "Resolver",
-      "Profiles",
-      "Domains",
-    ]) {
+    for (const label of ["Dashboard", "Hosted zones", "Health checks", "Profiles"]) {
       expect(screen.getByRole("link", { name: label })).toBeInTheDocument();
+    }
+
+    // Grouped sections render as expandable headers, not plain links, and stay
+    // collapsed by default since none of their children match activeHref ("/route53").
+    for (const group of ["Global Resolver", "VPC Resolver", "Domains", "IP-based routing", "Traffic flow"]) {
+      expect(screen.getByText(group)).toBeInTheDocument();
+    }
+
+    for (const label of ["DNS Firewall", "Application Recovery Controller"]) {
+      expect(screen.getByRole("link", { name: new RegExp(label) })).toBeInTheDocument();
     }
 
     // TopNavigation renders a hidden duplicate for responsive width measurement, so
