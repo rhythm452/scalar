@@ -8,12 +8,13 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/login")).toBe(true);
   });
 
-  it("treats the marketing root as public", () => {
+  it("treats / (the marketing landing page) as public", () => {
     expect(isPublicPath("/")).toBe(true);
   });
 
   it("treats every other path as protected", () => {
     expect(isPublicPath("/route53")).toBe(false);
+    expect(isPublicPath("/marketing")).toBe(false);
   });
 });
 
@@ -28,6 +29,12 @@ describe("buildLoginRedirectUrl", () => {
 describe("pageAuthGuard", () => {
   it("allows /login through with no cookie", () => {
     const request = new NextRequest(new URL("https://example.com/login"));
+    const response = pageAuthGuard(request);
+    expect(response.status).toBe(200);
+  });
+
+  it("allows / through with no cookie", () => {
+    const request = new NextRequest(new URL("https://example.com/"));
     const response = pageAuthGuard(request);
     expect(response.status).toBe(200);
   });
