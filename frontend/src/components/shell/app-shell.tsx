@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import AppLayout from "@cloudscape-design/components/app-layout";
 import BreadcrumbGroup from "@cloudscape-design/components/breadcrumb-group";
+import Flashbar from "@cloudscape-design/components/flashbar";
 import SideNavigation, { type SideNavigationProps } from "@cloudscape-design/components/side-navigation";
 import TopNavigation, { type TopNavigationProps } from "@cloudscape-design/components/top-navigation";
 import { useLogout } from "@/hooks/use-logout";
@@ -11,6 +12,7 @@ import { useSession } from "@/hooks/use-session";
 import { useTheme } from "@/hooks/use-theme";
 import { buildThemeUtility } from "@/components/shell/theme-toggle";
 import { BreadcrumbsProvider, useBreadcrumbsValue } from "@/components/shell/breadcrumbs-context";
+import { FlashbarProvider, useFlashbar } from "@/components/shell/flashbar-context";
 import { DEFAULT_AUTHENTICATED_PATH } from "@/lib/constants";
 
 // UI-PARITY §1 sections: Hosted zones, Health checks, Traffic policies, Resolver,
@@ -35,6 +37,7 @@ function AppShellContent({ children }: { children: ReactNode }) {
   const logout = useLogout();
   const theme = useTheme();
   const breadcrumbItems = useBreadcrumbsValue();
+  const { items: flashItems } = useFlashbar();
 
   const user = session?.user;
   const identityUtility: TopNavigationProps.MenuDropdownUtility = {
@@ -91,6 +94,7 @@ function AppShellContent({ children }: { children: ReactNode }) {
             }}
           />
         }
+        notifications={flashItems.length > 0 ? <Flashbar items={flashItems} /> : undefined}
         content={children}
       />
     </>
@@ -100,7 +104,9 @@ function AppShellContent({ children }: { children: ReactNode }) {
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <BreadcrumbsProvider>
-      <AppShellContent>{children}</AppShellContent>
+      <FlashbarProvider>
+        <AppShellContent>{children}</AppShellContent>
+      </FlashbarProvider>
     </BreadcrumbsProvider>
   );
 }

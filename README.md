@@ -20,34 +20,37 @@ Repository: [github.com/rhythm452/scalar](https://github.com/rhythm452/scalar)
 
 ## 1. Feature checklist
 
-Mapped 1:1 to the assignment scope. Phase 2 (this session) completed the backend
-API; the frontend (Phases 3–6) has not started, so every item touching UI is
-at most "Partial" — backend implemented and tested, nothing to render it yet.
+Mapped 1:1 to the assignment scope. Phases 0–4 and 6 are done: the backend API
+is complete, and the frontend now covers auth, the dashboard, and full hosted-
+zone management. Records (Phase 5), the bonus items (Phase 7), and E2E (Phase
+8) remain.
 
 | # | Scope item | Status | Spec |
 |---|------------|--------|------|
-| 1 | Mock sign-in, session cookie, session persist across reload, logout | Partial (backend) | `docs/ARCHITECTURE.md` §6, `docs/API.md` §2 |
-| 2 | Route 53 dashboard with summary counts | Partial (backend) | `docs/API.md` §8, `docs/UI-PARITY.md` §2 |
-| 3 | Hosted zone list: search, type filter, sort, cursor pagination, column preferences | Partial (backend; column preferences is frontend-only) | `docs/API.md` §3, `docs/UI-PARITY.md` §2–4 |
-| 4 | Create hosted zone (public/private, VPC, comment) with auto-created NS + SOA | Partial (backend) | `docs/ROUTE53-DOMAIN-RULES.md` R1 |
-| 5 | Hosted zone detail with Records / Details / Tags tabs | Partial (backend data; tabs are frontend-only) | `docs/UI-PARITY.md` §2 |
-| 6 | Edit hosted zone comment + tags (only editable fields, mirroring real console) | Partial (backend) | `docs/API.md` §3 |
-| 7 | Delete hosted zone with HostedZoneNotEmpty guard + confirm modal | Partial (guard done; confirm modal is frontend-only) | `docs/ROUTE53-DOMAIN-RULES.md` R3 |
-| 8 | Record table: search, type + routing-policy + alias filters, sort, pagination, bulk delete | Partial (backend; bulk delete UI pending) | `docs/API.md` §4 |
+| 1 | Mock sign-in, session cookie, session persist across reload, logout | Done | `docs/ARCHITECTURE.md` §6, `docs/API.md` §2 |
+| 2 | Route 53 dashboard with summary counts | Done | `docs/API.md` §8, `docs/UI-PARITY.md` §2 |
+| 3 | Hosted zone list: search, type filter, sort, cursor pagination, column preferences | Done (type filter is a Select, not PropertyFilter -- `docs/UI-PARITY.md` §7) | `docs/API.md` §3, `docs/UI-PARITY.md` §2–4 |
+| 4 | Create hosted zone (public/private, VPC, comment) with auto-created NS + SOA | Done | `docs/ROUTE53-DOMAIN-RULES.md` R1 |
+| 5 | Hosted zone detail with Records / Details / Tags tabs | Done (Records tab is read-only until Phase 5) | `docs/UI-PARITY.md` §2 |
+| 6 | Edit hosted zone comment + tags (only editable fields, mirroring real console) | Done | `docs/API.md` §3 |
+| 7 | Delete hosted zone with HostedZoneNotEmpty guard + confirm modal | Done | `docs/ROUTE53-DOMAIN-RULES.md` R3 |
+| 8 | Record table: search, type + routing-policy + alias filters, sort, pagination, bulk delete | Partial (read-only list done; filters/bulk delete are Phase 5) | `docs/API.md` §4 |
 | 9 | Quick-create and wizard record creation for all 13 types | Partial (backend validates/creates all 13; forms pending) | `docs/ROUTE53-DOMAIN-RULES.md` R5–R8 |
 | 10 | Edit record in SplitPanel drawer, delete record with system-record guard | Partial (guard done; drawer is frontend-only) | `docs/ROUTE53-DOMAIN-RULES.md` R2 |
 | 11 | Bulk record batch endpoint (create/delete/upsert) | Done (backend) | `docs/API.md` §4 |
 | 12 | Every mutation returns change ID PENDING → INSYNC; change lookup endpoint | Done (backend) | `docs/ROUTE53-DOMAIN-RULES.md` R11 |
-| 13 | Tags CRUD on hosted zones | Partial (backend) | `docs/API.md` §3 |
-| 14 | Mocked Health checks, Traffic policies, Resolver, Profiles, Domains inside AppLayout shell | Partial (backend stubs return well-formed empties; shell pending) | `docs/UI-PARITY.md` §2 |
+| 13 | Tags CRUD on hosted zones | Done | `docs/API.md` §3 |
+| 14 | Mocked Health checks, Traffic policies, Resolver, Profiles, Domains inside AppLayout shell | Done | `docs/UI-PARITY.md` §2 |
 | 15 | Bonus: BIND import (multipart) and export (json \| bind) | Planned (routes registered, return 501; Phase 7) | `docs/API.md` §6 |
 | 16 | Dark mode, density, visual-refresh theming; keyboard shortcuts | Planned | `docs/UI-PARITY.md` §5 |
-| 17 | Flashbar on every mutation, URL-synced filters, unsaved-changes guard | Planned | `docs/UI-PARITY.md` §4 |
+| 17 | Flashbar on every mutation, URL-synced filters, unsaved-changes guard | Done for zones (Phase 4); records carry it forward in Phase 5 | `docs/UI-PARITY.md` §4 |
 | 18 | E2E + visual regression in `/e2e`, all wired into CI | Planned | `docs/TESTING.md` |
 
 Backend status in full: 177 tests passing (`backend/tests/`), ruff and mypy
 --strict clean, 89% coverage on services + core (`make doctor`'s floor is
-85%). See `docs/ROADMAP.md` for the phase-by-phase plan.
+85%). Frontend status: 47 tests passing (`frontend/src/**/*.test.tsx`), ESLint
+and `tsc --noEmit` clean, production build green. See `docs/ROADMAP.md` for
+the phase-by-phase plan.
 
 ## 2. Tech stack
 

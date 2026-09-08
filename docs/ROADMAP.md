@@ -101,6 +101,10 @@ Deliverables:
 
 Docs sections: `UI-PARITY.md` §2–§4, `API.md` §3.
 Exit criteria: Create → list → detail → edit → delete flow passes manual and unit tests; URL params restore state.
+Status: completed (built alongside Phase 6). Records tab is read-only (GET
+`/rrsets` only) pending Phase 5's create/edit/delete forms; its "Create record"
+link points at the not-yet-built `records/create` route and 404s until Phase 5
+lands, the same expected-404 pattern Phase 3 used for this phase's own links.
 
 ## 7. Phase 5 — Records
 
@@ -124,6 +128,7 @@ Deliverables:
 
 Docs sections: `UI-PARITY.md` §2.
 Exit criteria: All mocked routes render correct shell, navigation, and empty state.
+Status: completed (built alongside Phase 4).
 
 ## 9. Phase 7 — Bonus: BIND import/export, dark mode, keyboard shortcuts
 

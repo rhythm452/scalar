@@ -111,5 +111,11 @@ The following items are unverified and will be reconciled against reference capt
 3. Exact wizard step titles for record creation (drafted as Details/Values/Routing/Review).
 4. Exact wording of the empty-zone body beyond `You don't have any hosted zones.`
 5. Whether zone detail tabs read `Hosted zone details` vs `Details`.
+6. Phase 4 implements the hosted-zones list's "Type" filter as a plain
+   Cloudscape `Select` rather than a `PropertyFilter` (§1's Cloudscape mapping)
+   -- a single equality filter doesn't need PropertyFilter's token/operator
+   machinery, and the resulting UI is behaviorally equivalent (a dropdown next
+   to the TextFilter). Revisit if a screenshot shows the real console using
+   PropertyFilter's token-chip style for this specific filter.
 
 The reference screenshots have not yet been supplied. Once they land in `docs/screenshots/`, update this section and any mismatched copy in the implementation.
