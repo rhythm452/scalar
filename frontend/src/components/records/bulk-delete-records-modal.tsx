@@ -35,10 +35,20 @@ export function BulkDeleteRecordsModal({
     bulkDelete.mutate(
       records.map((record) => record.id),
       {
-        onSuccess: () => {
+        onSuccess: (response) => {
           addFlash({
             type: "success",
             content: `${records.length} record${records.length === 1 ? "" : "s"} deleted.`,
+            activity: {
+              action: "Deleted",
+              resourceType: "Record",
+              resourceName:
+                records.length === 1 && records[0]
+                  ? `${records[0].name} ${records[0].type}`
+                  : `${records.length} records`,
+              changeId: response.change.id,
+              changeStatus: response.change.status,
+            },
           });
           onSuccess();
           close();

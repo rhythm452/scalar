@@ -46,7 +46,11 @@ export function ZoneDetailsTab({ zone }: { zone: HostedZoneDetail }) {
   const onSubmit = handleSubmit((values) => {
     updateZone.mutate(values.comment || null, {
       onSuccess: () => {
-        addFlash({ type: "success", content: "Hosted zone updated." });
+        addFlash({
+          type: "success",
+          content: "Hosted zone updated.",
+          activity: { action: "Updated", resourceType: "Hosted zone", resourceName: zone.name },
+        });
         setEditing(false);
       },
     });

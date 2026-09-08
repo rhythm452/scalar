@@ -49,23 +49,37 @@ export function QuickCreateRecordForm({
   const watched = watch("records");
 
   const onSubmit = handleSubmit((formValues) => {
+    const first = formValues.records[0];
+    const name =
+      formValues.records.length === 1 && first
+        ? `${first.subdomain.trim() || "@"}.${zoneName}`.replace(/^@\./, "")
+        : `${formValues.records.length} records`;
     createRecords.mutate(
       formValues.records.map((record) => recordFormToPayload(record, zoneName)),
       {
         onSuccess: (response) => {
-          const first = formValues.records[0];
-          const name =
-            formValues.records.length === 1 && first
-              ? `${first.subdomain.trim() || "@"}.${zoneName}`.replace(/^@\./, "")
-              : `${formValues.records.length} records`;
           addFlash({
             type: "success",
             content: `Record created: ${name} (Change ${response.change.id}, status ${response.change.status}).`,
+            activity: {
+              action: "Created",
+              resourceType: "Record",
+              resourceName: name,
+              changeId: response.change.id,
+              changeStatus: response.change.status,
+            },
           });
           router.push(`/route53/hostedzones/${zoneId}?tab=records`);
         },
         onError: (error) => {
           if (!isApiError(error)) return;
+          // The inline field/root mapping below stays untouched; this single
+          // announcement also toasts the failure and logs the error entry.
+          addFlash({
+            type: "error",
+            content: `Record not created: ${name} (${error.code}).`,
+            activity: { action: "Created", resourceType: "Record", resourceName: name },
+          });
           // A single record in the batch: map the AWS error onto that record's
           // field, exactly like the zone-create form. With more than one record
           // in the batch, the API doesn't say which item failed (docs/API.md §4
