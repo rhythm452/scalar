@@ -1,8 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { LOGIN_PATH, SESSION_COOKIE_NAME } from "@/lib/constants";
 
+// "/" has no marketing page in this codebase today (no src/app/page.tsx) -- but the
+// real console's root marketing page is fully public with no session, so this excludes
+// it defensively now rather than gating a page that gets added later (UI-PARITY
+// chrome-parity pass, Part F).
 export function isPublicPath(pathname: string): boolean {
-  return pathname === LOGIN_PATH;
+  return pathname === LOGIN_PATH || pathname === "/";
 }
 
 export function buildLoginRedirectUrl(nextUrl: URL): URL {

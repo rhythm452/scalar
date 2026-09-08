@@ -8,9 +8,12 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/login")).toBe(true);
   });
 
+  it("treats the marketing root as public", () => {
+    expect(isPublicPath("/")).toBe(true);
+  });
+
   it("treats every other path as protected", () => {
     expect(isPublicPath("/route53")).toBe(false);
-    expect(isPublicPath("/")).toBe(false);
   });
 });
 
