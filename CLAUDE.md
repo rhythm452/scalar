@@ -9,12 +9,11 @@ doesn't duplicate them, just points at what a session needs before writing code.
 |-------|--------|
 | Backend | FastAPI, Python 3.12, SQLAlchemy 2.0 async + Alembic, SQLite (WAL, FK on) |
 | Frontend | Next.js 15.5.25, Cloudscape Design System, TanStack Query, pnpm 9 |
-| Deploy | Cloudflare Workers (frontend, via OpenNext) + Fly.io (backend) behind a single-origin Worker proxy |
+| Deploy | Vercel (frontend, native Next.js) + Fly.io (backend) behind a single-origin `middleware.ts` proxy |
 | Package managers | `uv` (backend), `pnpm` (frontend/e2e) — reproducible lockfiles, never install without one |
 
-Full rationale for each choice is in `docs/DECISIONS.md` (ADRs 001–015, plus one open question,
-ADR-016); don't re-litigate a decision that's already recorded there without adding a new ADR
-that supersedes it.
+Full rationale for each choice is in `docs/DECISIONS.md` (ADRs 001–020); don't re-litigate a
+decision that's already recorded there without adding a new ADR that supersedes it.
 
 ## Layering — enforced mechanically, not by convention
 

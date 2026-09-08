@@ -22,8 +22,8 @@ Component inventory:
 
 | Component | Responsibility | Deploy target |
 |-----------|---------------|---------------|
-| Next.js App Router frontend | Screens, Cloudscape shell, forms, query cache, URL state | Cloudflare Workers via @opennextjs/cloudflare |
-| Cloudflare Worker proxy | Serves Next.js and proxies `/api/*` to Fly.io | Cloudflare Workers |
+| Next.js App Router frontend | Screens, Cloudscape shell, forms, query cache, URL state | Vercel (native Next.js hosting, no adapter) |
+| `middleware.ts` proxy | Runs as part of the Next.js app; proxies `/api/*` to Fly.io | Vercel Edge Middleware |
 | FastAPI backend | Routers, services, repositories, domain-rule enforcement, seed | Fly.io single machine |
 | SQLite (WAL, FK ON) | users, sessions, hosted_zones, record sets/values, tags, change batches | Fly volume `/data`, local `./data` |
 | Playwright suite in `/e2e` | E2E + visual regression against the composed system | CI only |
@@ -59,12 +59,12 @@ Traced for `GET /api/v1/hostedzones?search=example&type=public&page_size=20`.
 
 1. User types in the Table TextFilter. The list component writes `search` into URL query params via `next/navigation` (`useSearchParams` + `router.replace`), debounced 250 ms.
 2. The `useHostedZones` hook reads params from the URL, builds a stable query key `["hosted-zones", {search, type, pageSize, cursor, sortBy, sortOrder}]`, and calls `apiFetch` with `credentials: "include"` against the same-origin `/api/v1/hostedzones` path.
-3. In production, the Cloudflare Worker intercepts `/api/*` and proxies the request to the Fly.io FastAPI origin, forwarding method, headers, cookies, and body unmodified. In local development `next dev`, a rewrite proxies `/api/*` to `http://localhost:8000`.
+3. `frontend/src/middleware.ts` intercepts `/api/*` and proxies the request to the Fly.io FastAPI origin (`API_ORIGIN`), forwarding method, headers, cookies, and body unmodified. This is the same code path in `next dev`, CI, and on Vercel -- no environment branching.
 4. FastAPI auth dependency reads the session cookie, looks up `sessions` by token hash, rejects expired tokens with 401, and refreshes `last_seen_at`.
 5. The hosted-zone router parses and validates query params with a Pydantic query model, then calls `HostedZoneService.list(...)`.
 6. The service opens a read transaction, delegates to `HostedZoneRepository.search(...)` which applies owner scoping (`owner_user_id = current user`), `LIKE` on name, type equality, deterministic ordering by `(name, id)`, and cursor decoding (base64 of last sort key).
 7. The service maps ORM rows to Pydantic response schemas including `record_set_count` (denormalized column, no extra count query).
-8. The router returns `{items, next_token, total_estimate}`. The Worker streams the response back to the browser. The frontend caches by query key, renders the Cloudscape Table, and shows `loading` via the segment `loading.tsx` on first load and inline `Spinner` on refetch.
+8. The router returns `{items, next_token, total_estimate}`. Middleware streams the response back to the browser. The frontend caches by query key, renders the Cloudscape Table, and shows `loading` via the segment `loading.tsx` on first load and inline `Spinner` on refetch.
 
 ## 4. Request lifecycle: write
 
@@ -72,10 +72,10 @@ Traced for `POST /api/v1/hostedzones/{id}/rrsets` creating an A record.
 
 1. The Quick-create form (React Hook Form + Zod) validates locally: name normalization preview, TTL required for non-alias, per-type value shape.
 2. On submit, `useCreateRecord` mutation posts JSON to the same-origin `/api/v1/hostedzones/{id}/rrsets` with `credentials: "include"`. The submit button shows loading; the form stays mounted.
-3. The Worker proxies the request to Fly.io. Auth dependency identical to the read path; unauthenticated posts return the AWS-shaped 401 envelope.
+3. Middleware proxies the request to Fly.io. Auth dependency identical to the read path; unauthenticated posts return the AWS-shaped 401 envelope.
 4. The records router validates the body against `RecordSetCreate` schema and calls `RecordService.create(...)` inside one database transaction.
 5. The service enforces domain rules in fixed order: normalize name, zone-membership check, CNAME coexistence check, TTL/alias check, per-type value validation, set-identifier check, then `record_set_count` increment on the parent zone, then inserts `resource_record_sets` + `resource_record_values` rows, then inserts a `change_batches` row (status PENDING) plus `change_batch_items` snapshot rows, all in the same transaction (see `docs/ROUTE53-DOMAIN-RULES.md`).
-6. On commit, the router returns `201` with `{change: {id, status: "PENDING", submitted_at}, record}`. The Worker streams this back unchanged.
+6. On commit, the router returns `201` with `{change: {id, status: "PENDING", submitted_at}, record}`. Middleware streams this back unchanged.
 7. The frontend mutation `onSuccess` invalidates `["hosted-zones"]`, `["zone", id]`, and `["records", zoneId]` query keys, navigates back to the zone detail records tab preserving URL filters, and pushes a Flashbar item with AWS phrasing including the change ID.
 8. On domain-rule failure the service raises a typed `Route53Error(code, message, http_status)`; the global exception handler renders the AWS error envelope with a fresh `RequestId`. The form maps field-level codes to inline `FormField` errors and record-level codes to an `Alert`.
 
@@ -144,11 +144,11 @@ What lives on the server (TanStack cache backed by the API): users, sessions, zo
 
 ## 9. Single-origin deployment path
 
-The deployed application uses one public origin, `https://scalar-r53.workers.dev`, for both HTML and API traffic. The path is:
+The deployed application uses one public origin, the Vercel project's domain (e.g. `https://scalar-r53.vercel.app`), for both HTML and API traffic (docs/DECISIONS.md ADR-020). The path is:
 
-1. Browser issues `GET https://scalar-r53.workers.dev/route53/hostedzones` or `POST https://scalar-r53.workers.dev/api/v1/hostedzones`.
-2. The Cloudflare Worker receives the request. For `/api/*`, `frontend/src/middleware.ts` proxies it to `https://scalar-api.fly.dev`, preserving method, headers, cookies, and body and adding `X-Forwarded-Host`. For all other paths, the OpenNext worker serves the Next.js render or static asset.
+1. Browser issues `GET https://scalar-r53.vercel.app/route53/hostedzones` or `POST https://scalar-r53.vercel.app/api/v1/hostedzones`.
+2. Vercel's edge routes every request into the Next.js app. `frontend/src/middleware.ts` runs first: for `/api/*` it proxies the request to `API_ORIGIN` (the Fly.io backend URL, set as a Vercel project environment variable), preserving method, headers, cookies, and body and adding `X-Forwarded-Host`. For all other paths it falls through to the normal Next.js render or static asset.
 3. The Fly.io FastAPI backend receives the proxied request, validates the session cookie, executes the endpoint, and returns the response.
-4. The Worker streams the response back to the browser unmodified, so status codes, content types, and the AWS-shaped error envelope remain intact.
+4. Middleware streams the response back to the browser unmodified, so status codes, content types, and the AWS-shaped error envelope remain intact.
 
-Rationale: the assignment grades session persistence. A cross-origin deployment would require `SameSite=None` cookies, which Safari's ITP and Chrome's third-party cookie restrictions can silently discard. A judge logging in and refreshing could be bounced to the login page because of an invisible browser policy, not an application bug. Serving everything from one origin removes the failure class entirely. The cost is one extra network hop (Cloudflare edge to Fly.io origin), typically 30–60 ms for the regions involved.
+Rationale: the assignment grades session persistence. A cross-origin deployment would require `SameSite=None` cookies, which Safari's ITP and Chrome's third-party cookie restrictions can silently discard. A judge logging in and refreshing could be bounced to the login page because of an invisible browser policy, not an application bug. Serving everything from one origin removes the failure class entirely. The cost is one extra network hop (Vercel edge to Fly.io origin), typically 30–60 ms for the regions involved. This same proxy is exercised locally too: `next dev` runs the identical `middleware.ts`, so local development, CI, and production all take the same code path (docs/DEPLOYMENT.md §1).

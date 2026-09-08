@@ -61,7 +61,7 @@ the phase-by-phase plan.
 | Server state | TanStack Query | Cache per query key with explicit invalidation on each mutation |
 | Forms | React Hook Form + Zod | Uncontrolled inputs for large record forms; Zod mirrors backend per-type validation |
 | Package manager | pnpm | Fast, strict, disk-efficient workspaces |
-| Frontend deploy | Cloudflare Workers via @opennextjs/cloudflare | Single-origin with the backend; programmable edge proxy |
+| Frontend deploy | Vercel (native Next.js hosting) | Single-origin with the backend via `middleware.ts`; zero-config deploy (`docs/DECISIONS.md` ADR-020) |
 | Backend | FastAPI, Python 3.12 | Typed, async, Pydantic v2-native request/response modelling |
 | ORM | SQLAlchemy 2.0 typed DeclarativeBase + Alembic | All schema change via versioned migrations, never create-all |
 | Validation | Pydantic v2 schemas separate from ORM models | Routers never touch ORM objects directly |
@@ -69,7 +69,7 @@ the phase-by-phase plan.
 | Lint/types | Ruff + mypy strict; ESLint + Prettier + strict TS, no `any` | Graded code-quality gates enforced in CI |
 | Database | SQLite, WAL mode, FK ON | Single-file persistence on Fly volume; zero-ops for contest scope |
 | Tests | pytest + httpx AsyncClient; Vitest + RTL; Playwright | Pyramid with >85% backend service/router target |
-| Backend deploy | Fly.io + `/data` volume | Stateful single-machine backend behind the Worker proxy |
+| Backend deploy | Fly.io + `/data` volume | Stateful single-machine backend behind the middleware proxy |
 
 ## 3. Quick start
 
@@ -96,12 +96,7 @@ pnpm --dir frontend install
 pnpm --dir frontend dev
 ```
 
-### Path C — production-accurate Worker proxy locally
-
-```bash
-cp frontend/.dev.vars.example frontend/.dev.vars
-pnpm --dir frontend preview   # opennextjs-cloudflare build + wrangler dev
-```
+Path B's `next dev` already runs the real `middleware.ts` proxy (the same code that runs on Vercel), so there's no separate "production-accurate" mode to opt into.
 
 Seed is idempotent and runs on backend boot when the DB is empty (`docs/DATABASE.md` §13).
 
@@ -117,8 +112,7 @@ route53-clone/
 ├── backend/  pyproject.toml  alembic.ini  Dockerfile  fly.toml
 │             app/ (main, core, api/v1, models, schemas, services,
 │                   repositories, db, seed)  tests/
-├── frontend/  package.json  tsconfig.json  next.config.ts  wrangler.jsonc
-│              open-next.config.ts  Dockerfile
+├── frontend/  package.json  tsconfig.json  next.config.ts  Dockerfile
 │              src/ (app, components, lib, hooks, types, proxy, middleware.ts)  tests/
 └── e2e/  package.json  playwright.config.ts  tests/
 ```
@@ -133,9 +127,9 @@ route53-clone/
 | `docs/API.md` | REST contract, pagination, errors, curl per endpoint |
 | `docs/UI-PARITY.md` | Cloudscape mapping, screen inventory, copy, interactions, theming, a11y |
 | `docs/ROUTE53-DOMAIN-RULES.md` | Behavioural rules R1–R11 with exact error codes |
-| `docs/DECISIONS.md` | ADRs 001–016 |
+| `docs/DECISIONS.md` | ADRs 001–020 |
 | `docs/TESTING.md` | Pyramid, fixtures, MSW, Playwright scenarios, visual regression, CI |
-| `docs/DEPLOYMENT.md` | Local, Cloudflare Workers, Fly.io, CORS, env table, rollback |
+| `docs/DEPLOYMENT.md` | Local, Vercel, Fly.io, CORS, env table, rollback |
 | `docs/ROADMAP.md` | Phases 0–9 with deliverables and exit criteria |
 
 ## 6. Screenshots
@@ -163,7 +157,7 @@ Coverage target: >85% on backend services + routers. See `docs/TESTING.md`.
 
 ## 8. Deployment
 
-See `docs/DEPLOYMENT.md` for the full Cloudflare Workers + Fly.io procedure, environment variables, and rollback steps.
+See `docs/DEPLOYMENT.md` for the full Vercel + Fly.io procedure, environment variables, and rollback steps.
 
 ## 9. Known limitations
 

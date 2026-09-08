@@ -29,7 +29,10 @@ Status: completed.
 Deliverables: Cloudflare Workers frontend deploy via OpenNext; Worker-level `/api/*` proxy to Fly.io; Fly.io backend config; CI deploy/preview jobs; documentation reconciliation; `AGENTS.md`.
 Docs sections: `docs/DEPLOYMENT.md`, `docs/ARCHITECTURE.md` §9, `docs/DECISIONS.md` ADR-010–016, `docs/TESTING.md` §5/§7, `README.md`, `docs/ROADMAP.md`, `docs/UI-PARITY.md` §2.
 Exit criteria: `wrangler.jsonc`, `open-next.config.ts`, `fly.toml`, proxy middleware, CI deploy jobs, and reconciled docs exist; no Vercel references remain.
-Status: completed (this session).
+Status: completed (this session). **Superseded**: the Cloudflare Workers pieces
+(`wrangler.jsonc`, `open-next.config.ts`, the CI `preview` job) were removed
+later and the frontend moved to Vercel; see `docs/DECISIONS.md` ADR-020. The
+Fly.io backend config and the proxy middleware itself are unaffected.
 
 ## 3. Phase 1 — Backend: models, migrations, repositories, services, domain rules, seed
 
@@ -155,7 +158,7 @@ Exit criteria: `make test`, `make lint`, `make e2e` all green in CI.
 
 Deliverables:
 - Deploy backend to Fly.io
-- Deploy frontend to Cloudflare Workers
+- Deploy frontend to Vercel
 - Capture screenshots into `docs/screenshots/`
 - Record demo walkthrough
 - Final UI-parity pass against real console captures

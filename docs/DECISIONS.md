@@ -23,6 +23,7 @@ This log records every architecture decision reviewable under the judging criter
 17. ADR-017 ESLint 9 flat config, migrated now rather than deferred
 18. ADR-018 CI secret-presence gating via a job output, not a job-level `if:`
 19. ADR-019 Two-layer auth guard: middleware cookie presence + client-side session validation
+20. ADR-020 Vercel over Cloudflare Workers for the frontend (supersedes ADR-012)
 
 ## 1. ADR-001 Cloudscape over hand-rolled UI
 
@@ -136,6 +137,10 @@ Consequences: PRs include snapshot diffs; contributors must use the Linux contai
 
 ## 12. ADR-012 Cloudflare Workers plus OpenNext over Vercel for the frontend
 
+**Superseded by ADR-020**: the frontend now deploys to Vercel. This ADR's
+"Alternatives considered" reasoning turned out to be based on an incomplete
+picture of Vercel's own capabilities -- see ADR-020.
+
 Context: Phase 0 originally targeted Vercel for the frontend. The build must still be serverless/edge and easy to link to a public URL.
 
 Decision: Build the Next.js 15 frontend with `@opennextjs/cloudflare` and deploy to Cloudflare Workers via Wrangler. The public URL is `https://scalar-r53.workers.dev`.
@@ -145,6 +150,11 @@ Alternatives considered: Vercel (rejected: while simpler, it forces a cross-orig
 Consequences: Build pipeline runs `opennextjs-cloudflare`; local development can use either `next dev` or `wrangler dev`; Wrangler and account credentials are required.
 
 ## 13. ADR-013 Single-origin Worker proxy over cross-origin CORS
+
+**Note (post ADR-020)**: "Worker" below now reads as Next.js Middleware running
+on Vercel rather than a Cloudflare Worker, but every argument in this ADR
+(first-party cookie, no CORS preflight, the SameSite=None risk) applies
+identically regardless of which platform runs the proxy.
 
 Context: The FastAPI backend lives on Fly.io and the frontend on Cloudflare Workers. API calls could be cross-origin with CORS, or same-origin via a Worker proxy.
 
@@ -176,7 +186,7 @@ Consequences: The login page is immediately usable; E2E tests can rely on visibl
 
 | ID | Question | Recommendation |
 |----|----------|----------------|
-| ADR-016 | Custom domain vs workers.dev for the public app | Keep workers.dev for the contest to avoid DNS provisioning; move to a custom domain only if required |
+| ADR-016 | Custom domain vs workers.dev for the public app | **Moot as of ADR-020** (frontend moved to Vercel, no workers.dev involved). Vercel's own `*.vercel.app` domain is free and sufficient for the contest; a custom domain remains optional. |
 
 ## 17. ADR-017 ESLint 9 flat config, migrated now rather than deferred
 
@@ -201,6 +211,14 @@ pass for an unrelated but adjacent reason: `6.10.0` is a flagged bad release req
 what should have been a non-breaking minor.
 
 ## 18. ADR-018 CI secret-presence gating via a job output, not a job-level `if:`
+
+**Note (post ADR-020)**: this ADR originally gated both a Cloudflare `preview`
+job and a combined-platform `deploy` job on `CLOUDFLARE_API_TOKEN`/
+`CLOUDFLARE_ACCOUNT_ID`/`FLY_API_TOKEN`. The `preview` job and its Cloudflare
+half of `deploy` are gone (Vercel's own GitHub integration replaces them);
+`check-secrets` now only computes `has_fly`. The pattern this ADR
+documents -- a job output instead of a job-level `if:` referencing `secrets`
+-- is unchanged and still why `deploy` is written the way it is.
 
 Context: `preview`/`deploy` jobs need `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID`/
 `FLY_API_TOKEN`, which don't exist as repository secrets yet. Without a guard, those jobs fail
@@ -245,3 +263,43 @@ Consequences: Middleware stays fast (cookie read only, no I/O, no backend depend
 session is caught within one client-side query instead of one round trip per navigation; any
 future protected route gets both layers for free since `useSession` lives in the shared
 `AppShell`, not per-page.
+
+## 20. ADR-020 Vercel over Cloudflare Workers for the frontend (supersedes ADR-012)
+
+Context: ADR-012 chose Cloudflare Workers plus OpenNext over Vercel, reasoning
+that Vercel "forces a cross-origin boundary if the backend stays on Fly.io."
+That reasoning didn't hold up: `frontend/src/middleware.ts` already implements
+the `/api/*` proxy to `API_ORIGIN` using nothing but standard Next.js
+Middleware and the Web `fetch`/`Request`/`Response` APIs -- no
+Cloudflare-specific primitive. Vercel runs Next.js Middleware natively at its
+own edge, with no adapter step, so the exact same file produces the exact same
+single-origin proxy behavior there. ADR-012's alternatives analysis conflated
+"Vercel" with "Vercel without a same-origin proxy," which was never the only
+option.
+
+Decision: Deploy the frontend to Vercel using its native, zero-config Next.js
+support (no OpenNext, no Wrangler, no adapter). `middleware.ts` is unchanged
+and continues to proxy `/api/*` to `API_ORIGIN`, an environment variable set
+to the Fly.io backend's URL in the Vercel project settings. The backend stays
+on Fly.io exactly as ADR-008 and ADR-009 already established -- this decision
+touches frontend hosting only.
+
+Alternatives considered: staying on Cloudflare Workers (rejected per explicit
+direction; also removes a dependency -- OpenNext's Cloudflare adapter -- for
+no behavioral gain once Vercel's native middleware support was understood
+correctly). Moving the backend to Vercel too (rejected: Vercel's serverless
+functions have no persistent local disk between invocations, so the SQLite
+file ADR-008 relies on would reset every cold start; doing this properly would
+mean swapping SQLite for a hosted database, a materially larger change out of
+scope here).
+
+Consequences: `frontend/wrangler.jsonc`, `frontend/open-next.config.ts`,
+`frontend/.dev.vars.example`, the `@opennextjs/cloudflare`/`wrangler`
+devDependencies, and CI's Cloudflare `preview`/`deploy` steps are all removed.
+`next.config.ts`'s dev-only rewrite is also removed as dead code once it was
+clear middleware runs before `rewrites()` are ever considered, so it never
+actually fired. Vercel's own GitHub integration (once the repository is
+connected in the Vercel dashboard) replaces the CI-driven preview/deploy
+entirely -- no workflow YAML builds or ships the frontend anymore, Vercel's
+platform does. `docs/ARCHITECTURE.md` §9 and `docs/DEPLOYMENT.md` §2 are
+rewritten to describe this path.

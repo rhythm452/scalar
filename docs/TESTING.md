@@ -10,7 +10,7 @@ This document defines the test pyramid, fixtures, mocking strategy, E2E scenario
 4. E2E scenarios
 5. Visual regression
 6. CI wiring
-7. Testing against the Cloudflare Worker preview
+7. Testing against a Vercel preview deployment
 
 ## 1. Test pyramid and targets
 
@@ -105,20 +105,20 @@ Then commit the resulting `e2e/tests/__snapshots__/` files.
 
 `.github/workflows/ci.yml` runs:
 
-1. `check-secrets` — computes whether Cloudflare/Fly secrets exist, as a job output; `preview`/`deploy` key off this instead of referencing `secrets` directly in a job-level `if:` (GitHub rejects that at parse time).
+1. `check-secrets` — computes whether the Fly secret exists, as a job output; `deploy` keys off this instead of referencing `secrets` directly in a job-level `if:` (GitHub rejects that at parse time).
 2. `backend` — uv sync, ruff, ruff format check, mypy, pytest with coverage.
 3. `frontend` — pnpm install --frozen-lockfile, lint, tsc --noEmit, vitest.
 4. `e2e` — install backend + frontend, install Playwright Chromium, build frontend, run backend in-memory, run Playwright tests (skips the Playwright run itself, not the setup, while `e2e/tests` has no specs yet).
 5. `doctor` — runs `make doctor` (`scripts/doctor.sh`) in full.
 
-On pull requests, a `preview` job uploads a Cloudflare Worker version and posts the preview URL as a PR comment, only when `CLOUDFLARE_API_TOKEN` is set. On pushes to `main`, the `deploy` job deploys the frontend to Cloudflare Workers and the backend to Fly.io, only when both Cloudflare and Fly secrets are set. `backend`/`frontend`/`e2e`/`doctor` are unconditional and stay green independently of deployment credentials.
+On pushes to `main`, the `deploy` job deploys the backend to Fly.io, only when `FLY_API_TOKEN` is set. The frontend has no CI deploy step at all: Vercel's own GitHub integration builds a preview deployment for every PR and a production deployment on every push to `main` directly, independently of this workflow (docs/DECISIONS.md ADR-020). `backend`/`frontend`/`e2e`/`doctor` are unconditional and stay green independently of deployment credentials.
 
-## 7. Testing against the Cloudflare Worker preview
+## 7. Testing against a Vercel preview deployment
 
-For PR previews and staging, set the E2E base URL to the Worker preview URL:
+For PR previews and staging, set the E2E base URL to the Vercel preview URL (visible on the PR, posted automatically by Vercel's GitHub integration):
 
 ```bash
-E2E_BASE_URL=https://<preview>.scalar-r53.workers.dev pnpm --dir e2e exec playwright test
+E2E_BASE_URL=https://<preview>.vercel.app pnpm --dir e2e exec playwright test
 ```
 
-The same suite runs against localhost in CI. Tests must not assume the backend is on the same host as the Worker; they only call `/api/*` paths and rely on the Worker proxy.
+The same suite runs against localhost in CI. Tests must not assume the backend is on the same host as the frontend; they only call `/api/*` paths and rely on `middleware.ts`'s proxy.

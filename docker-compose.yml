@@ -17,8 +17,9 @@ services:
       timeout: 5s
       retries: 5
 
-  # Frontend via plain `next dev` for fast local iteration. Use `pnpm --dir frontend preview`
-  # (wrangler dev) when testing the real Cloudflare Worker proxy path end-to-end.
+  # Frontend via plain `next dev`. frontend/src/middleware.ts proxies /api/* to
+  # API_ORIGIN the same way here as it does once deployed to Vercel, so this
+  # already exercises the real single-origin proxy path (docs/DECISIONS.md ADR-020).
   frontend:
     build:
       context: ./frontend

@@ -10,7 +10,6 @@ jobs:
   check-secrets:
     runs-on: ubuntu-latest
     outputs:
-      has_cloudflare: ${{ steps.check.outputs.has_cloudflare }}
       has_fly: ${{ steps.check.outputs.has_fly }}
     steps:
       - id: check
@@ -18,8 +17,7 @@ jobs:
           # Job-level `if:` can't reference the secrets context directly
           # (GitHub rejects the whole workflow file at parse time); a step's
           # env: can, so presence is computed here and exposed as an output
-          # for preview/deploy to key off instead.
-          echo "has_cloudflare=${{ secrets.CLOUDFLARE_API_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+          # for deploy to key off instead.
           echo "has_fly=${{ secrets.FLY_API_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
 
   backend:
@@ -98,62 +96,15 @@ jobs:
       - run: pnpm --dir frontend install --frozen-lockfile
       - run: bash scripts/doctor.sh
 
-  preview:
-    runs-on: ubuntu-latest
-    needs: [check-secrets, backend, frontend, e2e]
-    if: ${{ github.event_name == 'pull_request' && needs.check-secrets.outputs.has_cloudflare == 'true' }}
-    permissions:
-      contents: read
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-          cache-dependency-path: frontend/pnpm-lock.yaml
-      - run: pnpm --dir frontend install --frozen-lockfile
-      - uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: frontend
-          command: versions upload
-      - name: Post preview URL
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: "Cloudflare preview uploaded for this PR."
-            });
-
+  # Frontend has no deploy job: Vercel's own GitHub integration builds preview
+  # deployments on every PR and production deployments on push to main directly,
+  # with no GitHub Actions step required (docs/DECISIONS.md ADR-020).
   deploy:
     runs-on: ubuntu-latest
     needs: [check-secrets, backend, frontend, e2e]
-    if: ${{ github.ref == 'refs/heads/main' && needs.check-secrets.outputs.has_cloudflare == 'true' && needs.check-secrets.outputs.has_fly == 'true' }}
+    if: ${{ github.ref == 'refs/heads/main' && needs.check-secrets.outputs.has_fly == 'true' }}
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-          cache-dependency-path: frontend/pnpm-lock.yaml
-      - run: pnpm --dir frontend install --frozen-lockfile
-      - uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: frontend
-          command: deploy
       - uses: superfly/flyctl-actions/setup-flyctl@master
       - run: fly deploy --config backend/fly.toml --dockerfile backend/Dockerfile backend
         env:
