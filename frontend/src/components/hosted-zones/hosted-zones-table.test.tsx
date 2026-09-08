@@ -15,7 +15,7 @@ function renderTable() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <HostedZonesTable />
+      <HostedZonesTable selectedItems={[]} onSelectionChangeAction={() => {}} onCountChangeAction={() => {}} />
     </QueryClientProvider>,
   );
 }
@@ -33,6 +33,6 @@ describe("HostedZonesTable", () => {
     );
     renderTable();
     expect(await screen.findByText("No hosted zones")).toBeInTheDocument();
-    expect(screen.getByText("You don't have any hosted zones.")).toBeInTheDocument();
+    expect(screen.getByText("There are no hosted zones created for this account.")).toBeInTheDocument();
   });
 });

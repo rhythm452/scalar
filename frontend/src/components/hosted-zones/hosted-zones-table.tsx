@@ -10,10 +10,10 @@ import SpaceBetween from "@cloudscape-design/components/space-between";
 import Table, { type TableProps } from "@cloudscape-design/components/table";
 import TextFilter from "@cloudscape-design/components/text-filter";
 import { useHostedZones } from "@/hooks/use-hosted-zones";
+import { useSession } from "@/hooks/use-session";
 import { useCursorPagination } from "@/hooks/use-cursor-pagination";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useTablePreferences } from "@/hooks/use-table-preferences";
-import { formatRelativeDate } from "@/lib/format-date";
 import type { HostedZoneListItem, HostedZoneListParams, HostedZoneType } from "@/types/hosted-zone";
 import { NavLink } from "@/components/shell/nav-link";
 import { ZoneTypeBadge } from "@/components/hosted-zones/zone-type-badge";
@@ -24,52 +24,74 @@ const TYPE_OPTIONS = [
   { label: "Private", value: "private" },
 ];
 
+// Column order and labels match the real console exactly (UI-PARITY chrome-parity
+// pass, Part D.1): Hosted zone name, Type, Created by, Record count, Description,
+// Hosted zone ID.
 const CONTENT_DISPLAY_DEFAULT = [
   { id: "name", visible: true },
   { id: "type", visible: true },
-  { id: "comment", visible: true },
+  { id: "createdBy", visible: true },
   { id: "records", visible: true },
-  { id: "created", visible: true },
+  { id: "comment", visible: true },
+  { id: "hostedZoneId", visible: true },
 ];
 
-const COLUMN_DEFINITIONS: TableProps.ColumnDefinition<HostedZoneListItem>[] = [
-  {
-    id: "name",
-    header: "Domain name",
-    cell: (item) => <NavLink href={`/route53/hostedzones/${item.id}`}>{item.name}</NavLink>,
-    sortingField: "name",
-    width: 300,
-    isRowHeader: true,
-  },
-  {
-    id: "type",
-    header: "Type",
-    cell: (item) => <ZoneTypeBadge type={item.type} />,
-    width: 120,
-  },
-  {
-    id: "comment",
-    header: "Description",
-    cell: (item) => item.comment || <Box color="text-body-secondary">-</Box>,
-    width: 280,
-  },
-  {
-    id: "records",
-    header: "Records",
-    cell: (item) => item.record_set_count,
-    sortingField: "record_set_count",
-    width: 100,
-  },
-  {
-    id: "created",
-    header: "Created",
-    cell: (item) => formatRelativeDate(item.created_at),
-    sortingField: "created_at",
-    width: 200,
-  },
-];
+// `createdBy` is a client-side stand-in, not real per-row backend data: the schema
+// has no creator field (docs/DATABASE.md), so every row shows the seeded session
+// user's display name rather than fabricating per-row variation (UI-PARITY Part D.2).
+function buildColumnDefinitions(createdByName: string): TableProps.ColumnDefinition<HostedZoneListItem>[] {
+  return [
+    {
+      id: "name",
+      header: "Hosted zone name",
+      cell: (item) => <NavLink href={`/route53/hostedzones/${item.id}`}>{item.name}</NavLink>,
+      sortingField: "name",
+      width: 260,
+      isRowHeader: true,
+    },
+    {
+      id: "type",
+      header: "Type",
+      cell: (item) => <ZoneTypeBadge type={item.type} />,
+      width: 110,
+    },
+    {
+      id: "createdBy",
+      header: "Created by",
+      cell: () => createdByName,
+      width: 160,
+    },
+    {
+      id: "records",
+      header: "Record count",
+      cell: (item) => item.record_set_count,
+      sortingField: "record_set_count",
+      width: 130,
+    },
+    {
+      id: "comment",
+      header: "Description",
+      cell: (item) => item.comment || <Box color="text-body-secondary">-</Box>,
+      width: 260,
+    },
+    {
+      id: "hostedZoneId",
+      header: "Hosted zone ID",
+      cell: (item) => item.id,
+      width: 200,
+    },
+  ];
+}
 
-export function HostedZonesTable() {
+export function HostedZonesTable({
+  selectedItems,
+  onSelectionChangeAction,
+  onCountChangeAction,
+}: {
+  selectedItems: HostedZoneListItem[];
+  onSelectionChangeAction: (items: HostedZoneListItem[]) => void;
+  onCountChangeAction: (count: number) => void;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -124,18 +146,30 @@ export function HostedZonesTable() {
   );
 
   const { data, isLoading, isFetching } = useHostedZones(queryParams);
+  const { data: session } = useSession();
+  const createdByName = session?.user.display_name ?? session?.user.username ?? "-";
 
+  useEffect(() => {
+    onCountChangeAction(data?.items.length ?? 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.items.length]);
+
+  const columnDefinitions = useMemo(() => buildColumnDefinitions(createdByName), [createdByName]);
   const sortingColumn =
-    COLUMN_DEFINITIONS.find((column) => column.sortingField === sortBy) ?? COLUMN_DEFINITIONS[0];
+    columnDefinitions.find((column) => column.sortingField === sortBy) ?? columnDefinitions[0];
   const visibleContentIds = preferences.contentDisplay.filter((c) => c.visible).map((c) => c.id);
 
   return (
     <Table
       items={data?.items ?? []}
-      columnDefinitions={COLUMN_DEFINITIONS}
+      columnDefinitions={columnDefinitions}
       visibleColumns={visibleContentIds}
       wrapLines={preferences.wrapLines}
       stickyHeader
+      selectionType="single"
+      trackBy="id"
+      selectedItems={selectedItems}
+      onSelectionChange={({ detail }) => onSelectionChangeAction(detail.selectedItems)}
       loading={isLoading || isFetching}
       loadingText="Loading hosted zones"
       ariaLabels={{ tableLabel: "Hosted zones table" }}
@@ -207,7 +241,7 @@ export function HostedZonesTable() {
           }}
           contentDisplayPreference={{
             title: "Column preferences",
-            options: COLUMN_DEFINITIONS.map((column) => ({
+            options: columnDefinitions.map((column) => ({
               id: column.id as string,
               label: String(column.header),
               alwaysVisible: column.id === "name",
@@ -228,11 +262,13 @@ export function HostedZonesTable() {
           <SpaceBetween size="m">
             <Box variant="strong">No hosted zones</Box>
             <Box variant="p" color="inherit">
-              You don&apos;t have any hosted zones.
+              There are no hosted zones created for this account.
             </Box>
-            <NavLink href="/route53/hostedzones/create" variant="normal">
-              Create hosted zone
-            </NavLink>
+            <span className="r53-primary-cta">
+              <NavLink href="/route53/hostedzones/create" variant="primary">
+                Create hosted zone
+              </NavLink>
+            </span>
           </SpaceBetween>
         </Box>
       }
