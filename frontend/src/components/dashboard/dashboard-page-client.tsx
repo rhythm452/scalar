@@ -1,51 +1,53 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import Button from "@cloudscape-design/components/button";
 import ContentLayout from "@cloudscape-design/components/content-layout";
 import Header from "@cloudscape-design/components/header";
+import Link from "@cloudscape-design/components/link";
 import SpaceBetween from "@cloudscape-design/components/space-between";
 import { useSummary } from "@/hooks/use-summary";
 import { useSetBreadcrumbs } from "@/components/shell/breadcrumbs-context";
-import { DashboardCards } from "@/components/dashboard/dashboard-cards";
+import { DashboardActionCards } from "@/components/dashboard/dashboard-action-cards";
+import { DashboardRegisterDomain } from "@/components/dashboard/dashboard-register-domain";
+import { DashboardNotifications } from "@/components/dashboard/dashboard-notifications";
+import { DashboardMoreResources } from "@/components/dashboard/dashboard-more-resources";
+import { DashboardServiceHealth } from "@/components/dashboard/dashboard-service-health";
 
-// The Phase-4 routes these actions link to don't exist yet -- they render and link
-// there per docs/UI-PARITY.md §2, 404ing via app/not-found.tsx until Phase 4 lands.
+// The real console's "Info" link opens a HelpPanel in AppLayout's tools slot, but
+// this app's shell renders `toolsHide` everywhere (no HelpPanel exists anywhere in
+// the app) and app-shell.tsx is out of scope for this pass (chrome is frozen).
+// Rather than fabricate a help panel just for this page, "Info" points at the real
+// AWS Route 53 console user guide in a new tab -- a documented, honest deviation
+// (UI-PARITY dashboard-parity pass) rather than a fake toggle that opens nothing.
 export function DashboardPageClient() {
-  const router = useRouter();
   useSetBreadcrumbs([{ text: "Route 53", href: "/route53" }]);
   const { data: summary, isLoading } = useSummary();
-
-  const navigate = (href: string) => (event: { preventDefault: () => void }) => {
-    event.preventDefault();
-    router.push(href);
-  };
 
   return (
     <ContentLayout
       header={
         <Header
           variant="h1"
-          actions={
-            <SpaceBetween direction="horizontal" size="xs">
-              <Button href="/route53/hostedzones" onFollow={navigate("/route53/hostedzones")}>
-                View hosted zones
-              </Button>
-              <Button
-                variant="primary"
-                href="/route53/hostedzones/create"
-                onFollow={navigate("/route53/hostedzones/create")}
-              >
-                Create hosted zone
-              </Button>
-            </SpaceBetween>
+          info={
+            <Link
+              variant="info"
+              external
+              href="https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/Welcome.html"
+            >
+              Info
+            </Link>
           }
         >
           Route 53 Dashboard
         </Header>
       }
     >
-      <DashboardCards summary={summary} isLoading={isLoading} />
+      <SpaceBetween size="l">
+        <DashboardActionCards summary={summary} isLoading={isLoading} />
+        <DashboardRegisterDomain />
+        <DashboardNotifications />
+        <DashboardMoreResources />
+        <DashboardServiceHealth />
+      </SpaceBetween>
     </ContentLayout>
   );
 }
